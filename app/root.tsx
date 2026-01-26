@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -9,6 +10,33 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import { clerkMiddleware, rootAuthLoader } from '@clerk/react-router/server'
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useAuth } from "@clerk/react-router";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { Authenticated, ConvexReactClient, Unauthenticated, useMutation, useConvexAuth } from "convex/react";
+import { api } from "../convex/_generated/api";
+
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+
+// Component that syncs the Clerk user to Convex
+function UserSync() {
+  const { isAuthenticated } = useConvexAuth();
+  const upsertUser = useMutation(api.users.upsertUser);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      upsertUser().catch(console.error);
+    }
+  }, [isAuthenticated, upsertUser]);
+
+  return null;
+}
+
+
+export const middleware = [clerkMiddleware()]
+
+export const loader = (args: Route.LoaderArgs) => rootAuthLoader(args)
+
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -19,7 +47,7 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Geom:wght@400;500;600;700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
   },
 ];
 
@@ -41,8 +69,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
-  return <Outlet />;
+export default function App({ loaderData }: Route.ComponentProps) {
+  return (
+    <ClerkProvider loaderData={loaderData}>
+      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        <main>
+          <Unauthenticated>
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold text-plum mb-4">Emille</h1>
+                <p className="text-mauve mb-6">Sign in to manage your meals</p>
+                <SignInButton>
+                  <button className="px-6 py-3 bg-plum text-white rounded-lg hover:bg-plum/90 transition-colors font-medium">
+                    Sign In
+                  </button>
+                </SignInButton>
+              </div>
+            </div>
+          </Unauthenticated>
+          <Authenticated>
+            <UserSync />
+            <Outlet />
+          </Authenticated>
+        </main>
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
