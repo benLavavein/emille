@@ -52,7 +52,15 @@ export default defineSchema({
         notes: v.optional(v.string()),
       })
     ),
-    steps: v.array(v.string()), // Recipe steps in order
+    steps: v.array(
+      v.union(
+        v.string(),
+        v.object({
+          text: v.string(),
+          timerSeconds: v.optional(v.number()),
+        })
+      )
+    ),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])

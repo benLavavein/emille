@@ -2,6 +2,12 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./users";
 
+type Step = { text: string; timerSeconds?: number };
+
+function normalizeSteps(steps: (string | Step)[]): Step[] {
+  return steps.map((s) => (typeof s === "string" ? { text: s } : s));
+}
+
 // Get all meals for the current user with tag details
 export const list = query({
   args: {},
@@ -25,6 +31,7 @@ export const list = query({
         );
         return {
           ...meal,
+          steps: normalizeSteps(meal.steps),
           tags: tags.filter(Boolean),
         };
       })
@@ -66,6 +73,7 @@ export const get = query({
 
     return {
       ...meal,
+      steps: normalizeSteps(meal.steps),
       ingredientsWithDetails,
       tags: tags.filter(Boolean),
     };
@@ -86,7 +94,12 @@ export const create = mutation({
         notes: v.optional(v.string()),
       })
     ),
-    steps: v.array(v.string()),
+    steps: v.array(
+      v.object({
+        text: v.string(),
+        timerSeconds: v.optional(v.number()),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -136,7 +149,14 @@ export const update = mutation({
         })
       )
     ),
-    steps: v.optional(v.array(v.string())),
+    steps: v.optional(
+      v.array(
+        v.object({
+          text: v.string(),
+          timerSeconds: v.optional(v.number()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);

@@ -1,23 +1,196 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { X, Maximize2 } from "lucide-react";
+import { X, Maximize2, Timer, Play, Square } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { AnimatePresence, motion } from "motion/react";
 
-export function meta() {
-  return [
-    { title: "Cook Mode - Emille" },
-    { name: "description", content: "Step-by-step cooking guide" },
-  ];
+type Step = { text: string; timerSeconds?: number };
+
+function formatTime(totalSeconds: number): string {
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function formatTimerLabel(seconds: number): string {
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins} min`;
+  }
+  return `${seconds}s`;
+}
+
+function useTimer() {
+  const [endTime, setEndTime] = useState<number | null>(null);
+  const [remaining, setRemaining] = useState(0);
+  const [finished, setFinished] = useState(false);
+  const rafRef = useRef<number>(0);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  const acquireWakeLock = useCallback(async () => {
+    try {
+      if ("wakeLock" in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+      }
+    } catch {}
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    wakeLockRef.current?.release();
+    wakeLockRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (endTime === null) return;
+
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      setRemaining(left);
+      if (left <= 0) {
+        setEndTime(null);
+        setFinished(true);
+        releaseWakeLock();
+        return;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [endTime, releaseWakeLock]);
+
+  const start = useCallback(
+    (seconds: number) => {
+      setFinished(false);
+      setEndTime(Date.now() + seconds * 1000);
+      setRemaining(seconds);
+      acquireWakeLock();
+    },
+    [acquireWakeLock]
+  );
+
+  const stop = useCallback(() => {
+    setEndTime(null);
+    setRemaining(0);
+    setFinished(false);
+    releaseWakeLock();
+  }, [releaseWakeLock]);
+
+  const dismiss = useCallback(() => {
+    setFinished(false);
+  }, []);
+
+  const isRunning = endTime !== null;
+
+  return { remaining, isRunning, finished, start, stop, dismiss };
+}
+
+function playChime() {
+  try {
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.4);
+    });
+
+    if ("vibrate" in navigator) {
+      navigator.vibrate([200, 100, 200, 100, 400]);
+    }
+  } catch {}
+}
+
+function TimerButton({
+  timerSeconds,
+  large,
+}: {
+  timerSeconds: number;
+  large?: boolean;
+}) {
+  const timer = useTimer();
+  const hasPlayed = useRef(false);
+
+  useEffect(() => {
+    if (timer.finished && !hasPlayed.current) {
+      hasPlayed.current = true;
+      playChime();
+    }
+    if (!timer.finished) {
+      hasPlayed.current = false;
+    }
+  }, [timer.finished]);
+
+  if (timer.finished) {
+    return (
+      <motion.button
+        initial={{ scale: 0.9 }}
+        animate={{ scale: [1, 1.05, 1] }}
+        transition={{ repeat: Infinity, duration: 0.8 }}
+        onClick={(e) => {
+          e.stopPropagation();
+          timer.dismiss();
+        }}
+        className={`inline-flex items-center gap-2 rounded-full bg-green-500 text-white font-semibold ${
+          large ? "px-6 py-3 text-lg" : "px-3 py-1.5 text-sm"
+        }`}
+      >
+        <Timer className={large ? "size-5" : "size-4"} />
+        Done!
+      </motion.button>
+    );
+  }
+
+  if (timer.isRunning) {
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          timer.stop();
+        }}
+        className={`inline-flex items-center gap-2 rounded-full bg-plum text-white font-mono font-semibold tabular-nums ${
+          large ? "px-6 py-3 text-2xl" : "px-3 py-1.5 text-sm"
+        }`}
+      >
+        <Square className={large ? "size-5" : "size-3.5"} fill="currentColor" />
+        {formatTime(timer.remaining)}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        timer.start(timerSeconds);
+      }}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-plum/30 text-plum hover:bg-plum/10 transition-colors ${
+        large ? "px-5 py-2.5 text-base" : "px-3 py-1 text-xs"
+      }`}
+    >
+      <Play className={large ? "size-4" : "size-3"} fill="currentColor" />
+      {formatTimerLabel(timerSeconds)}
+    </button>
+  );
 }
 
 function FocusedMode({
   steps,
   onClose,
 }: {
-  steps: string[];
+  steps: Step[];
   onClose: () => void;
 }) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -36,6 +209,8 @@ function FocusedMode({
       setCurrentStep((s) => s + 1);
     }
   }, [currentStep, steps.length]);
+
+  const step = steps[currentStep];
 
   return (
     <motion.div
@@ -57,14 +232,12 @@ function FocusedMode({
       </div>
 
       <div className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Tap zone: top half goes back */}
         <button
           onClick={goBack}
           disabled={currentStep === 0}
           className="absolute inset-x-0 top-0 h-1/2 z-10 cursor-pointer disabled:cursor-default"
           aria-label="Previous step"
         />
-        {/* Tap zone: bottom half goes forward */}
         <button
           onClick={goForward}
           disabled={currentStep === steps.length - 1}
@@ -80,11 +253,16 @@ function FocusedMode({
             animate={{ opacity: 1, y: 0 }}
             exit={(d: number) => ({ opacity: 0, y: d >= 0 ? -60 : 60 })}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
-            className="flex-1 flex items-center justify-center px-8 md:px-16"
+            className="flex-1 flex flex-col items-center justify-center px-8 md:px-16 gap-6"
           >
             <p className="text-2xl md:text-4xl leading-relaxed text-plum text-center font-medium">
-              {steps[currentStep]}
+              {step.text}
             </p>
+            {step.timerSeconds && (
+              <div className="z-20 relative">
+                <TimerButton timerSeconds={step.timerSeconds} large />
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -108,6 +286,13 @@ function FocusedMode({
       </div>
     </motion.div>
   );
+}
+
+export function meta() {
+  return [
+    { title: "Cook Mode - Emille" },
+    { name: "description", content: "Step-by-step cooking guide" },
+  ];
 }
 
 export default function CookPage() {
@@ -143,6 +328,8 @@ export default function CookPage() {
     );
   }
 
+  const steps: Step[] = meal.steps;
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="mb-8">
@@ -166,7 +353,7 @@ export default function CookPage() {
       </div>
 
       <div className="space-y-4">
-        {meal.steps.map((step: string, index: number) => (
+        {steps.map((step, index) => (
           <div
             key={index}
             className="flex gap-4 p-5 bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50"
@@ -174,7 +361,14 @@ export default function CookPage() {
             <span className="w-10 h-10 rounded-full bg-plum/20 text-plum flex items-center justify-center text-lg font-semibold shrink-0">
               {index + 1}
             </span>
-            <p className="text-plum text-lg pt-1.5 leading-relaxed">{step}</p>
+            <div className="flex-1 pt-1.5">
+              <p className="text-plum text-lg leading-relaxed">{step.text}</p>
+              {step.timerSeconds && (
+                <div className="mt-2">
+                  <TimerButton timerSeconds={step.timerSeconds} />
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -182,7 +376,7 @@ export default function CookPage() {
       <AnimatePresence>
         {focused && (
           <FocusedMode
-            steps={meal.steps}
+            steps={steps}
             onClose={() => setFocused(false)}
           />
         )}

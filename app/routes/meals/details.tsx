@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "~/components/ui/tooltip";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Timer } from "lucide-react";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 
 export function meta() {
@@ -187,7 +187,7 @@ export default function MealDetailsPage() {
               Recipe Steps
             </h2>
             <div className="space-y-3">
-              {meal.steps.map((step: string, index: number) => (
+              {meal.steps.map((step: any, index: number) => (
                 <div
                   key={index}
                   className="flex gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50"
@@ -195,7 +195,17 @@ export default function MealDetailsPage() {
                   <span className="w-8 h-8 rounded-full bg-plum/20 text-plum flex items-center justify-center text-sm font-semibold shrink-0">
                     {index + 1}
                   </span>
-                  <p className="text-plum pt-1">{step}</p>
+                  <div className="flex-1 pt-1">
+                    <p className="text-plum">{step.text}</p>
+                    {step.timerSeconds && (
+                      <span className="inline-flex items-center gap-1 mt-1 text-xs text-mauve">
+                        <Timer className="h-3 w-3" />
+                        {step.timerSeconds >= 60
+                          ? `${Math.floor(step.timerSeconds / 60)} min`
+                          : `${step.timerSeconds}s`}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

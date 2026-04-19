@@ -5,7 +5,7 @@ import { api } from "convex/_generated/api";
 import { Combobox, type ComboboxItem } from "~/components/ui/combobox";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { X, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
+import { X, ChevronUp, ChevronDown, ArrowUpDown, Timer } from "lucide-react";
 import { QuantityInput } from "~/components/ui/quantity-input";
 import { MEAL_TIMES } from "~/lib/constants/meals";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
@@ -38,6 +38,11 @@ export type MealTag = {
   name: string;
 };
 
+export type MealStep = {
+  text: string;
+  timerSeconds?: number;
+};
+
 export type MealFormData = {
   name: string;
   mealTimes: string[];
@@ -48,7 +53,7 @@ export type MealFormData = {
     unit: string | undefined;
     notes: string | undefined;
   }[];
-  steps: string[];
+  steps: MealStep[];
 };
 
 type MealFormProps = {
@@ -57,7 +62,7 @@ type MealFormProps = {
     mealTimes: string[];
     ingredients: MealIngredient[];
     tags: MealTag[];
-    steps: string[];
+    steps: MealStep[];
   };
   onSubmit: (data: MealFormData) => Promise<void>;
   onCancel: () => void;
@@ -94,8 +99,12 @@ export function MealForm({
   const nextStepId = useRef(
     (initialData?.steps?.length ?? 0) + 1
   );
-  const [steps, setSteps] = useState<{ id: number; text: string }[]>(
-    () => (initialData?.steps ?? []).map((text, i) => ({ id: i + 1, text }))
+  const [steps, setSteps] = useState<{ id: number; text: string; timerMinutes: string }[]>(
+    () => (initialData?.steps ?? []).map((s, i) => ({
+      id: i + 1,
+      text: s.text,
+      timerMinutes: s.timerSeconds ? String(s.timerSeconds / 60) : "",
+    }))
   );
   const [newStep, setNewStep] = useState("");
   const [isReordering, setIsReordering] = useState(false);
@@ -169,13 +178,19 @@ export function MealForm({
   const addStep = () => {
     if (!newStep.trim()) return;
     const id = nextStepId.current++;
-    setSteps((prev) => [...prev, { id, text: newStep.trim() }]);
+    setSteps((prev) => [...prev, { id, text: newStep.trim(), timerMinutes: "" }]);
     setNewStep("");
   };
 
   const updateStep = (index: number, text: string) => {
     setSteps((prev) =>
       prev.map((step, i) => (i === index ? { ...step, text } : step))
+    );
+  };
+
+  const updateStepTimer = (index: number, timerMinutes: string) => {
+    setSteps((prev) =>
+      prev.map((step, i) => (i === index ? { ...step, timerMinutes } : step))
     );
   };
 
@@ -208,7 +223,13 @@ export function MealForm({
           unit: ing.unit.trim() || undefined,
           notes: ing.notes,
         })),
-        steps: steps.map((s) => s.text),
+        steps: steps.map((s) => {
+          const mins = parseFloat(s.timerMinutes);
+          return {
+            text: s.text,
+            timerSeconds: mins > 0 ? Math.round(mins * 60) : undefined,
+          };
+        }),
       });
     } catch (error) {
       console.error("Failed to save meal:", error);
@@ -427,6 +448,19 @@ export function MealForm({
                         rows={1}
                         className="flex-1 px-2 py-1 rounded-lg border border-transparent bg-transparent focus:outline-none focus:border-border focus:bg-background text-sm resize-none overflow-hidden"
                       />
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                          type="number"
+                          value={step.timerMinutes}
+                          onChange={(e) => updateStepTimer(index, e.target.value)}
+                          placeholder="min"
+                          min="0"
+                          step="0.5"
+                          className="w-14 px-1.5 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-xs text-center"
+                        />
+                      </div>
 
                       <button
                         type="button"
