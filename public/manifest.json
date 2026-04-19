@@ -1,0 +1,17 @@
+{
+  "name": "Emille",
+  "short_name": "Emille",
+  "description": "Your personal meal planning companion",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF5EE",
+  "theme_color": "#574964",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/otter.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

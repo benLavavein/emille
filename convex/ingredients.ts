@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./users";
 
-// Get all ingredients for the current user with store details
+// Get all ingredients for the current user with store details and meal usage counts
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -14,18 +14,26 @@ export const list = query({
       .order("desc")
       .collect();
 
-    // Fetch store details for each ingredient
-    const ingredientsWithStore = await Promise.all(
+    const meals = await ctx.db
+      .query("meals")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const ingredientsWithDetails = await Promise.all(
       ingredients.map(async (ing) => {
         const store = ing.storeId ? await ctx.db.get(ing.storeId) : null;
+        const usedInCount = meals.filter((meal) =>
+          meal.ingredients.some((mi) => mi.ingredientId === ing._id)
+        ).length;
         return {
           ...ing,
           store: store ? { _id: store._id, name: store.name } : null,
+          usedInCount,
         };
       })
     );
 
-    return ingredientsWithStore;
+    return ingredientsWithDetails;
   },
 });
 
@@ -127,7 +135,7 @@ export const update = mutation({
   },
 });
 
-// Delete an ingredient
+// Delete an ingredient (only if not used in any meal)
 export const remove = mutation({
   args: { id: v.id("ingredients") },
   handler: async (ctx, args) => {
@@ -136,6 +144,22 @@ export const remove = mutation({
 
     if (!ingredient || ingredient.userId !== user._id) {
       throw new Error("Ingredient not found");
+    }
+
+    const meals = await ctx.db
+      .query("meals")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const usedIn = meals.filter((meal) =>
+      meal.ingredients.some((ing) => ing.ingredientId === args.id)
+    );
+
+    if (usedIn.length > 0) {
+      const names = usedIn.map((m) => m.name).join(", ");
+      throw new Error(
+        `Cannot delete "${ingredient.name}" because it is used in: ${names}`
+      );
     }
 
     await ctx.db.delete(args.id);

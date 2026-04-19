@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Search } from "lucide-react";
+import { Search, CookingPot } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "~/components/ui/tooltip";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 
@@ -131,29 +131,44 @@ export default function MealsPage() {
               
               
 
-              <div className="flex items-end gap-1.5">
-                  {MEAL_TIMES.map((time, index) => {
-                    const Icon = MEAL_TIME_ICONS[time];
-                    const isActive = meal.mealTimes?.includes(time);
-                    // Arc effect: middle icon higher, outer icons lower
-                    const arcOffset = index === 1 ? "-translate-y-2" : "translate-y-0";
-                    return (
-                      <Tooltip key={time}>
-                        <TooltipTrigger asChild>
-                          <span className={arcOffset}>
-                            <Icon
-                              className={`size-8 transition-colors ${
-                                isActive ? "text-plum" : "text-plum/20"
-                              }`}
-                            />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <span className="capitalize">{time}</span>
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
+              <div className="flex items-center gap-4">
+                  {meal.steps.length > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link
+                          to={`/meals/${meal._id}/cook`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-2 rounded-lg bg-peach/50 text-plum hover:bg-peach transition-colors"
+                        >
+                          <CookingPot className="size-6" />
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent>Cook</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <div className="flex items-end gap-1.5">
+                    {MEAL_TIMES.map((time, index) => {
+                      const Icon = MEAL_TIME_ICONS[time];
+                      const isActive = meal.mealTimes?.includes(time);
+                      const arcOffset = index === 1 ? "-translate-y-2" : "translate-y-0";
+                      return (
+                        <Tooltip key={time}>
+                          <TooltipTrigger asChild>
+                            <span className={arcOffset}>
+                              <Icon
+                                className={`size-8 transition-colors ${
+                                  isActive ? "text-plum" : "text-plum/20"
+                                }`}
+                              />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <span className="capitalize">{time}</span>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
                 </div>
             </Link>
           ))}
