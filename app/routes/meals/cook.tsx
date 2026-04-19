@@ -1,12 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { X, Maximize2, Timer, Play, Square } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { AnimatePresence, motion } from "motion/react";
 
 type Step = { text: string; timerSeconds?: number };
+type ActiveTimer = { stepIndex: number; endTime: number } | undefined;
 
 function formatTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -23,69 +24,31 @@ function formatTimerLabel(seconds: number): string {
   return `${seconds}s`;
 }
 
-function useTimer() {
-  const [endTime, setEndTime] = useState<number | null>(null);
-  const [remaining, setRemaining] = useState(0);
-  const [finished, setFinished] = useState(false);
+function useCountdown(endTime: number | null) {
+  const [remaining, setRemaining] = useState(() =>
+    endTime ? Math.max(0, Math.ceil((endTime - Date.now()) / 1000)) : 0
+  );
   const rafRef = useRef<number>(0);
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
-
-  const acquireWakeLock = useCallback(async () => {
-    try {
-      if ("wakeLock" in navigator) {
-        wakeLockRef.current = await navigator.wakeLock.request("screen");
-      }
-    } catch {}
-  }, []);
-
-  const releaseWakeLock = useCallback(() => {
-    wakeLockRef.current?.release();
-    wakeLockRef.current = null;
-  }, []);
 
   useEffect(() => {
-    if (endTime === null) return;
+    if (endTime === null) {
+      setRemaining(0);
+      return;
+    }
 
     const tick = () => {
       const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
       setRemaining(left);
-      if (left <= 0) {
-        setEndTime(null);
-        setFinished(true);
-        releaseWakeLock();
-        return;
+      if (left > 0) {
+        rafRef.current = requestAnimationFrame(tick);
       }
-      rafRef.current = requestAnimationFrame(tick);
     };
 
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [endTime, releaseWakeLock]);
+  }, [endTime]);
 
-  const start = useCallback(
-    (seconds: number) => {
-      setFinished(false);
-      setEndTime(Date.now() + seconds * 1000);
-      setRemaining(seconds);
-      acquireWakeLock();
-    },
-    [acquireWakeLock]
-  );
-
-  const stop = useCallback(() => {
-    setEndTime(null);
-    setRemaining(0);
-    setFinished(false);
-    releaseWakeLock();
-  }, [releaseWakeLock]);
-
-  const dismiss = useCallback(() => {
-    setFinished(false);
-  }, []);
-
-  const isRunning = endTime !== null;
-
-  return { remaining, isRunning, finished, start, stop, dismiss };
+  return remaining;
 }
 
 function playChime() {
@@ -114,35 +77,68 @@ function playChime() {
 }
 
 function TimerButton({
+  mealId,
+  stepIndex,
   timerSeconds,
+  activeTimer,
   large,
 }: {
+  mealId: string;
+  stepIndex: number;
   timerSeconds: number;
+  activeTimer: ActiveTimer;
   large?: boolean;
 }) {
-  const timer = useTimer();
+  const startTimer = useMutation(api.meals.startTimer);
+  const clearTimer = useMutation(api.meals.clearTimer);
+
+  const isThisStep = activeTimer?.stepIndex === stepIndex;
+  const endTime = isThisStep ? activeTimer!.endTime : null;
+  const remaining = useCountdown(endTime);
+
+  const isRunning = isThisStep && remaining > 0;
+  const justFinished = isThisStep && endTime !== null && remaining === 0;
+
   const hasPlayed = useRef(false);
 
   useEffect(() => {
-    if (timer.finished && !hasPlayed.current) {
+    if (justFinished && !hasPlayed.current) {
       hasPlayed.current = true;
       playChime();
+      clearTimer({ id: mealId as any });
     }
-    if (!timer.finished) {
+    if (!justFinished) {
       hasPlayed.current = false;
     }
-  }, [timer.finished]);
+  }, [justFinished, clearTimer, mealId]);
 
-  if (timer.finished) {
+  const handleStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      startTimer({
+        id: mealId as any,
+        stepIndex,
+        durationSeconds: timerSeconds,
+      });
+    },
+    [startTimer, mealId, stepIndex, timerSeconds]
+  );
+
+  const handleStop = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      clearTimer({ id: mealId as any });
+    },
+    [clearTimer, mealId]
+  );
+
+  if (justFinished) {
     return (
       <motion.button
         initial={{ scale: 0.9 }}
         animate={{ scale: [1, 1.05, 1] }}
         transition={{ repeat: Infinity, duration: 0.8 }}
-        onClick={(e) => {
-          e.stopPropagation();
-          timer.dismiss();
-        }}
+        onClick={handleStop}
         className={`inline-flex items-center gap-2 rounded-full bg-green-500 text-white font-semibold ${
           large ? "px-6 py-3 text-lg" : "px-3 py-1.5 text-sm"
         }`}
@@ -153,32 +149,31 @@ function TimerButton({
     );
   }
 
-  if (timer.isRunning) {
+  if (isRunning) {
     return (
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          timer.stop();
-        }}
+        onClick={handleStop}
         className={`inline-flex items-center gap-2 rounded-full bg-plum text-white font-mono font-semibold tabular-nums ${
           large ? "px-6 py-3 text-2xl" : "px-3 py-1.5 text-sm"
         }`}
       >
         <Square className={large ? "size-5" : "size-3.5"} fill="currentColor" />
-        {formatTime(timer.remaining)}
+        {formatTime(remaining)}
       </button>
     );
   }
 
+  const anotherTimerActive = activeTimer && activeTimer.stepIndex !== stepIndex;
+
   return (
     <button
-      onClick={(e) => {
-        e.stopPropagation();
-        timer.start(timerSeconds);
-      }}
-      className={`inline-flex items-center gap-1.5 rounded-full border border-plum/30 text-plum hover:bg-plum/10 transition-colors ${
-        large ? "px-5 py-2.5 text-base" : "px-3 py-1 text-xs"
-      }`}
+      onClick={handleStart}
+      disabled={!!anotherTimerActive}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-plum/30 text-plum transition-colors ${
+        anotherTimerActive
+          ? "opacity-40 cursor-not-allowed"
+          : "hover:bg-plum/10"
+      } ${large ? "px-5 py-2.5 text-base" : "px-3 py-1 text-xs"}`}
     >
       <Play className={large ? "size-4" : "size-3"} fill="currentColor" />
       {formatTimerLabel(timerSeconds)}
@@ -188,12 +183,18 @@ function TimerButton({
 
 function FocusedMode({
   steps,
+  mealId,
+  activeTimer,
+  initialStep,
   onClose,
 }: {
   steps: Step[];
+  mealId: string;
+  activeTimer: ActiveTimer;
+  initialStep: number;
   onClose: () => void;
 }) {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [direction, setDirection] = useState(0);
 
   const goBack = useCallback(() => {
@@ -260,7 +261,13 @@ function FocusedMode({
             </p>
             {step.timerSeconds && (
               <div className="z-20 relative">
-                <TimerButton timerSeconds={step.timerSeconds} large />
+                <TimerButton
+                  mealId={mealId}
+                  stepIndex={currentStep}
+                  timerSeconds={step.timerSeconds}
+                  activeTimer={activeTimer}
+                  large
+                />
               </div>
             )}
           </motion.div>
@@ -300,6 +307,18 @@ export default function CookPage() {
   const mealId = params.id as string;
   const meal = useQuery(api.meals.get, { id: mealId as any });
   const [focused, setFocused] = useState(false);
+  const [focusedStep, setFocusedStep] = useState(0);
+  const hasAutoResumed = useRef(false);
+
+  useEffect(() => {
+    if (!meal || hasAutoResumed.current) return;
+
+    if (meal.activeTimer && meal.activeTimer.endTime > Date.now()) {
+      hasAutoResumed.current = true;
+      setFocusedStep(meal.activeTimer.stepIndex);
+      setFocused(true);
+    }
+  }, [meal]);
 
   if (meal === undefined) {
     return (
@@ -329,6 +348,7 @@ export default function CookPage() {
   }
 
   const steps: Step[] = meal.steps;
+  const activeTimer: ActiveTimer = meal.activeTimer ?? undefined;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -342,7 +362,10 @@ export default function CookPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-plum">Cook: {meal.name}</h1>
           <Button
-            onClick={() => setFocused(true)}
+            onClick={() => {
+              setFocusedStep(0);
+              setFocused(true);
+            }}
             variant="outline"
             className="gap-2"
           >
@@ -365,7 +388,12 @@ export default function CookPage() {
               <p className="text-plum text-lg leading-relaxed">{step.text}</p>
               {step.timerSeconds && (
                 <div className="mt-2">
-                  <TimerButton timerSeconds={step.timerSeconds} />
+                  <TimerButton
+                    mealId={mealId}
+                    stepIndex={index}
+                    timerSeconds={step.timerSeconds}
+                    activeTimer={activeTimer}
+                  />
                 </div>
               )}
             </div>
@@ -377,6 +405,9 @@ export default function CookPage() {
         {focused && (
           <FocusedMode
             steps={steps}
+            mealId={mealId}
+            activeTimer={activeTimer}
+            initialStep={focusedStep}
             onClose={() => setFocused(false)}
           />
         )}

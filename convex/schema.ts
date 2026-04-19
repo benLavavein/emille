@@ -61,6 +61,12 @@ export default defineSchema({
         })
       )
     ),
+    activeTimer: v.optional(
+      v.object({
+        stepIndex: v.number(),
+        endTime: v.number(),
+      })
+    ),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
