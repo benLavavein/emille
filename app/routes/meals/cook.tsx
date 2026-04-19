@@ -25,20 +25,15 @@ function formatTimerLabel(seconds: number): string {
 }
 
 function useCountdown(endTime: number | null) {
-  const [remaining, setRemaining] = useState(() =>
-    endTime ? Math.max(0, Math.ceil((endTime - Date.now()) / 1000)) : 0
-  );
+  const [, forceRender] = useState(0);
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    if (endTime === null) {
-      setRemaining(0);
-      return;
-    }
+    if (endTime === null) return;
 
     const tick = () => {
       const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
-      setRemaining(left);
+      forceRender((n) => n + 1);
       if (left > 0) {
         rafRef.current = requestAnimationFrame(tick);
       }
@@ -48,7 +43,8 @@ function useCountdown(endTime: number | null) {
     return () => cancelAnimationFrame(rafRef.current);
   }, [endTime]);
 
-  return remaining;
+  if (endTime === null) return 0;
+  return Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
 }
 
 function playChime() {
