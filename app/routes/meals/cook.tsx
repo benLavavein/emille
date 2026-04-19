@@ -32,7 +32,7 @@ function useCountdown(endTime: number | null) {
     if (endTime === null) return;
 
     const tick = () => {
-      const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      const left = Math.max(0, Math.round((endTime - Date.now()) / 1000));
       forceRender((n) => n + 1);
       if (left > 0) {
         rafRef.current = requestAnimationFrame(tick);
@@ -44,7 +44,7 @@ function useCountdown(endTime: number | null) {
   }, [endTime]);
 
   if (endTime === null) return 0;
-  return Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+  return Math.max(0, Math.round((endTime - Date.now()) / 1000));
 }
 
 function playChime() {
