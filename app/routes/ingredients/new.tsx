@@ -10,22 +10,6 @@ export function meta() {
   ];
 }
 
-const QUANTITY_UNITS = [
-  "whole",
-  "cup",
-  "tablespoon",
-  "teaspoon",
-  "oz",
-  "lb",
-  "g",
-  "kg",
-  "ml",
-  "L",
-  "pinch",
-  "dash",
-  "to taste",
-] as const;
-
 export default function NewIngredientPage() {
   const navigate = useNavigate();
   const stores = useQuery(api.groceryStores.list);
@@ -65,7 +49,9 @@ export default function NewIngredientPage() {
       });
       navigate("/ingredients");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create ingredient");
+      setError(
+        err instanceof Error ? err.message : "Failed to create ingredient"
+      );
       setIsSubmitting(false);
     }
   };
@@ -116,19 +102,14 @@ export default function NewIngredientPage() {
           >
             Default Quantity Type
           </label>
-          <select
+          <input
             id="quantityType"
+            type="text"
             value={defaultQuantityType}
             onChange={(e) => setDefaultQuantityType(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum"
-          >
-            <option value="">Select a default unit...</option>
-            {QUANTITY_UNITS.map((unit) => (
-              <option key={unit} value={unit}>
-                {unit}
-              </option>
-            ))}
-          </select>
+            placeholder="e.g., cups, oz, cans, lbs"
+            className="w-full px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum placeholder:text-mauve/50"
+          />
           <p className="text-sm text-mauve/60 mt-1">
             This will be pre-selected when adding this ingredient to a meal
           </p>
@@ -142,10 +123,7 @@ export default function NewIngredientPage() {
 
           <div className="space-y-4">
             <div>
-              <label
-                htmlFor="store"
-                className="block text-sm text-mauve mb-2"
-              >
+              <label htmlFor="store" className="block text-sm text-mauve mb-2">
                 Store
               </label>
               {stores === undefined ? (

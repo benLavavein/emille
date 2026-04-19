@@ -80,3 +80,27 @@ export const getMe = query({
     return await getCurrentUser(ctx);
   },
 });
+
+// Set the user's default store
+export const setDefaultStore = mutation({
+  args: {
+    storeId: v.optional(v.id("groceryStores")),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    // Verify store belongs to user if provided
+    if (args.storeId) {
+      const store = await ctx.db.get(args.storeId);
+      if (!store || store.userId !== user._id) {
+        throw new Error("Store not found");
+      }
+    }
+
+    await ctx.db.patch(user._id, {
+      defaultStoreId: args.storeId,
+    });
+
+    return user._id;
+  },
+});

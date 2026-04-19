@@ -81,7 +81,8 @@ export const create = mutation({
     ingredients: v.array(
       v.object({
         ingredientId: v.id("ingredients"),
-        quantity: v.optional(v.string()),
+        amount: v.optional(v.float64()),
+        unit: v.optional(v.string()),
         notes: v.optional(v.string()),
       })
     ),
@@ -129,7 +130,8 @@ export const update = mutation({
       v.array(
         v.object({
           ingredientId: v.id("ingredients"),
-          quantity: v.optional(v.string()),
+          amount: v.optional(v.float64()),
+          unit: v.optional(v.string()),
           notes: v.optional(v.string()),
         })
       )

@@ -10,7 +10,9 @@
 
 import type * as groceryStores from "../groceryStores.js";
 import type * as ingredients from "../ingredients.js";
+import type * as mealPlans from "../mealPlans.js";
 import type * as meals from "../meals.js";
+import type * as shoppingList from "../shoppingList.js";
 import type * as tags from "../tags.js";
 import type * as users from "../users.js";
 
@@ -23,7 +25,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   groceryStores: typeof groceryStores;
   ingredients: typeof ingredients;
+  mealPlans: typeof mealPlans;
   meals: typeof meals;
+  shoppingList: typeof shoppingList;
   tags: typeof tags;
   users: typeof users;
 }>;

@@ -19,6 +19,7 @@ import {
   Sun,
   MoonStar,
 } from "lucide-react";
+import { MEAL_TIMES } from "~/lib/constants/meals";
 
 type IngredientId = string;
 type TagId = string;
@@ -30,24 +31,6 @@ export function meta() {
   ];
 }
 
-const QUANTITY_UNITS = [
-  "whole",
-  "cup",
-  "tablespoon",
-  "teaspoon",
-  "oz",
-  "lb",
-  "g",
-  "kg",
-  "ml",
-  "L",
-  "pinch",
-  "dash",
-  "to taste",
-] as const;
-
-const MEAL_TIMES = ["breakfast", "lunch", "dinner"] as const;
-
 const MEAL_TIME_ICONS = {
   breakfast: Sunrise,
   lunch: Sun,
@@ -57,7 +40,7 @@ const MEAL_TIME_ICONS = {
 type MealIngredient = {
   ingredientId: IngredientId;
   name: string;
-  quantity: string;
+  amount: string;
   unit: string;
   notes?: string;
 };
@@ -66,23 +49,6 @@ type MealTag = {
   id: TagId;
   name: string;
 };
-
-// Parse quantity string like "2 cups" into { quantity: "2", unit: "cups" }
-function parseQuantity(quantityStr: string | undefined): {
-  quantity: string;
-  unit: string;
-} {
-  if (!quantityStr) return { quantity: "1", unit: "whole" };
-  const parts = quantityStr.trim().split(/\s+/);
-  if (parts.length === 1) {
-    // Check if it's just a unit
-    if (QUANTITY_UNITS.includes(parts[0] as any)) {
-      return { quantity: "1", unit: parts[0] };
-    }
-    return { quantity: parts[0], unit: "whole" };
-  }
-  return { quantity: parts[0], unit: parts.slice(1).join(" ") };
-}
 
 export default function MealDetailsPage() {
   const params = useParams();
@@ -116,16 +82,13 @@ export default function MealDetailsPage() {
     setEditName(meal.name);
     setEditMealTimes(meal.mealTimes || []);
     setEditIngredients(
-      meal.ingredientsWithDetails.map((ing: any) => {
-        const parsed = parseQuantity(ing.quantity);
-        return {
-          ingredientId: ing.ingredientId,
-          name: ing.ingredient?.name || "Unknown",
-          quantity: parsed.quantity,
-          unit: parsed.unit,
-          notes: ing.notes,
-        };
-      })
+      meal.ingredientsWithDetails.map((ing: any) => ({
+        ingredientId: ing.ingredientId,
+        name: ing.ingredient?.name || "Unknown",
+        amount: ing.amount != null ? String(ing.amount) : "",
+        unit: ing.unit || "",
+        notes: ing.notes,
+      }))
     );
     setEditTags(
       (meal.tags || []).map((tag: any) => ({ id: tag._id, name: tag.name }))
@@ -158,7 +121,7 @@ export default function MealDetailsPage() {
   const handleSelectIngredient = (item: ComboboxItem) => {
     setEditIngredients((prev) => [
       ...prev,
-      { ingredientId: item.id, name: item.label, quantity: "1", unit: "whole" },
+      { ingredientId: item.id, name: item.label, amount: "1", unit: "" },
     ]);
   };
 
@@ -170,8 +133,8 @@ export default function MealDetailsPage() {
         {
           ingredientId: id,
           name: ingredientName,
-          quantity: "1",
-          unit: "whole",
+          amount: "1",
+          unit: "",
         },
       ]);
     },
@@ -190,9 +153,9 @@ export default function MealDetailsPage() {
     [createTag]
   );
 
-  const updateIngredientQuantity = (index: number, quantity: string) => {
+  const updateIngredientAmount = (index: number, amount: string) => {
     setEditIngredients((prev) =>
-      prev.map((ing, i) => (i === index ? { ...ing, quantity } : ing))
+      prev.map((ing, i) => (i === index ? { ...ing, amount } : ing))
     );
   };
 
@@ -262,7 +225,8 @@ export default function MealDetailsPage() {
         tagIds: editTags.map((t) => t.id) as any,
         ingredients: editIngredients.map((ing) => ({
           ingredientId: ing.ingredientId as any,
-          quantity: `${ing.quantity} ${ing.unit}`,
+          amount: parseFloat(ing.amount) || undefined,
+          unit: ing.unit.trim() || undefined,
           notes: ing.notes,
         })),
         steps: editSteps,
@@ -351,7 +315,8 @@ export default function MealDetailsPage() {
             {(["breakfast", "lunch", "dinner"] as const).map((time, index) => {
               const Icon = MEAL_TIME_ICONS[time];
               const isActive = meal.mealTimes?.includes(time);
-              const arcOffset = index === 1 ? "-translate-y-2" : "translate-y-0";
+              const arcOffset =
+                index === 1 ? "-translate-y-2" : "translate-y-0";
               return (
                 <Tooltip key={time}>
                   <TooltipTrigger asChild>
@@ -390,11 +355,7 @@ export default function MealDetailsPage() {
               Are you sure you want to delete this meal? This cannot be undone.
             </p>
             <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDelete}
-              >
+              <Button variant="destructive" size="sm" onClick={handleDelete}>
                 Yes, delete
               </Button>
               <Button
@@ -414,7 +375,9 @@ export default function MealDetailsPage() {
           <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50 divide-y divide-blush/30">
             {meal.ingredientsWithDetails.map((ing: any, index: number) => (
               <div key={index} className="flex items-center gap-3 p-4">
-                <span className="text-mauve min-w-20">{ing.quantity}</span>
+                <span className="text-mauve min-w-20">
+                  {[ing.amount, ing.unit].filter(Boolean).join(" ") || "—"}
+                </span>
                 <span className="font-medium text-plum">
                   {ing.ingredient?.name || "Unknown ingredient"}
                 </span>
@@ -496,7 +459,6 @@ export default function MealDetailsPage() {
                 type="button"
                 variant={editMealTimes.includes(time) ? "default" : "outline"}
                 onClick={() => toggleMealTime(time)}
-                className="capitalize"
               >
                 {time}
               </Button>
@@ -571,25 +533,23 @@ export default function MealDetailsPage() {
 
                   <input
                     type="text"
-                    value={ing.quantity}
+                    value={ing.amount}
                     onChange={(e) =>
-                      updateIngredientQuantity(index, e.target.value)
+                      updateIngredientAmount(index, e.target.value)
                     }
                     className="w-16 px-2 py-1 text-center rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
                     placeholder="1"
                   />
 
-                  <select
+                  <input
+                    type="text"
                     value={ing.unit}
-                    onChange={(e) => updateIngredientUnit(index, e.target.value)}
-                    className="px-2 py-1 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
-                  >
-                    {QUANTITY_UNITS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(e) =>
+                      updateIngredientUnit(index, e.target.value)
+                    }
+                    className="w-24 px-2 py-1 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
+                    placeholder="cups, oz..."
+                  />
 
                   <Button
                     type="button"

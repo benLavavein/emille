@@ -68,9 +68,10 @@ export default function StoresPage() {
       ) : (
         <div className="grid gap-4">
           {stores.map((store) => (
-            <div
+            <Link
               key={store._id}
-              className="p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50 hover:border-plum/30 hover:bg-white/80 transition-all"
+              to={`/stores/${store._id}`}
+              className="block p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50 hover:border-plum/30 hover:bg-white/80 transition-all"
             >
               <h2 className="text-xl font-semibold text-plum mb-3">
                 {store.name}
@@ -94,7 +95,7 @@ export default function StoresPage() {
               ) : (
                 <p className="text-mauve/60 text-sm">No sections added yet</p>
               )}
-            </div>
+            </Link>
           ))}
         </div>
       )}

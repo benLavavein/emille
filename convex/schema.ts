@@ -7,14 +7,21 @@ export default defineSchema({
     clerkId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
+    defaultStoreId: v.optional(v.id("groceryStores")),
   }).index("by_clerk_id", ["clerkId"]),
 
   // Ingredients that the user has created/used
   ingredients: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    storeId: v.optional(v.id("groceryStores")), // Which store this ingredient is typically at
-    storeSectionName: v.optional(v.string()), // Which section in that store
+    storeLocations: v.optional(
+      v.array(
+        v.object({
+          storeId: v.id("groceryStores"),
+          sectionName: v.string(),
+        })
+      )
+    ),
     defaultQuantityType: v.optional(v.string()), // Default unit: "cup", "tablespoon", etc.
     notes: v.optional(v.string()),
     createdAt: v.number(),
@@ -40,8 +47,9 @@ export default defineSchema({
     ingredients: v.array(
       v.object({
         ingredientId: v.id("ingredients"),
-        quantity: v.optional(v.string()), // e.g., "2 cups", "1 lb"
-        notes: v.optional(v.string()), // e.g., "diced", "room temperature"
+        amount: v.optional(v.float64()),
+        unit: v.optional(v.string()),
+        notes: v.optional(v.string()),
       })
     ),
     steps: v.array(v.string()), // Recipe steps in order
@@ -64,4 +72,29 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_and_name", ["userId", "name"]),
+
+  // Meal plans - a collection of meals
+  mealPlans: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    mealIds: v.array(v.id("meals")),
+    isActive: v.boolean(), // Only one can be active at a time
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_active", ["userId", "isActive"]),
+
+  // Shopping list for a user
+  shoppingLists: defineTable({
+    userId: v.id("users"),
+    items: v.array(
+      v.object({
+        id: v.string(), // Unique ID for reordering
+        name: v.string(),
+        ingredientId: v.optional(v.id("ingredients")), // Link to ingredient if exists
+        checked: v.boolean(),
+        order: v.number(),
+      })
+    ),
+  }).index("by_user", ["userId"]),
 });

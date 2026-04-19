@@ -6,6 +6,7 @@ import { Combobox, type ComboboxItem } from "~/components/ui/combobox";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { X, GripVertical } from "lucide-react";
+import { MEAL_TIMES } from "~/lib/constants/meals";
 
 type IngredientId = string;
 type TagId = string;
@@ -17,28 +18,10 @@ export function meta() {
   ];
 }
 
-const QUANTITY_UNITS = [
-  "whole",
-  "cup",
-  "tablespoon",
-  "teaspoon",
-  "oz",
-  "lb",
-  "g",
-  "kg",
-  "ml",
-  "L",
-  "pinch",
-  "dash",
-  "to taste",
-] as const;
-
-const MEAL_TIMES = ["breakfast", "lunch", "dinner"] as const;
-
 type MealIngredient = {
   ingredientId: IngredientId;
   name: string;
-  quantity: string;
+  amount: string;
   unit: string;
   notes?: string;
 };
@@ -86,7 +69,7 @@ export default function NewMealPage() {
   const handleSelectIngredient = (item: ComboboxItem) => {
     setMealIngredients((prev) => [
       ...prev,
-      { ingredientId: item.id, name: item.label, quantity: "1", unit: "whole" },
+      { ingredientId: item.id, name: item.label, amount: "1", unit: "" },
     ]);
   };
 
@@ -96,7 +79,12 @@ export default function NewMealPage() {
       const id = await createIngredient({ name: ingredientName });
       setMealIngredients((prev) => [
         ...prev,
-        { ingredientId: id, name: ingredientName, quantity: "1", unit: "whole" },
+        {
+          ingredientId: id,
+          name: ingredientName,
+          amount: "1",
+          unit: "",
+        },
       ]);
     },
     [createIngredient]
@@ -116,9 +104,9 @@ export default function NewMealPage() {
     [createTag]
   );
 
-  const updateIngredientQuantity = (index: number, quantity: string) => {
+  const updateIngredientAmount = (index: number, amount: string) => {
     setMealIngredients((prev) =>
-      prev.map((ing, i) => (i === index ? { ...ing, quantity } : ing))
+      prev.map((ing, i) => (i === index ? { ...ing, amount } : ing))
     );
   };
 
@@ -173,7 +161,8 @@ export default function NewMealPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || mealIngredients.length === 0 || mealTimes.length === 0) return;
+    if (!name.trim() || mealIngredients.length === 0 || mealTimes.length === 0)
+      return;
 
     setIsSubmitting(true);
     try {
@@ -183,7 +172,8 @@ export default function NewMealPage() {
         tagIds: mealTags.map((t) => t.id) as any,
         ingredients: mealIngredients.map((ing) => ({
           ingredientId: ing.ingredientId as any,
-          quantity: `${ing.quantity} ${ing.unit}`,
+          amount: parseFloat(ing.amount) || undefined,
+          unit: ing.unit.trim() || undefined,
           notes: ing.notes,
         })),
         steps,
@@ -210,7 +200,10 @@ export default function NewMealPage() {
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Meal Name */}
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-plum mb-2">
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium text-plum mb-2"
+          >
             Meal Name
           </label>
           <input
@@ -243,7 +236,9 @@ export default function NewMealPage() {
             ))}
           </div>
           {mealTimes.length === 0 && (
-            <p className="text-sm text-muted-foreground mt-2">Select at least one</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Select at least one
+            </p>
           )}
         </div>
 
@@ -309,23 +304,23 @@ export default function NewMealPage() {
 
                   <input
                     type="text"
-                    value={ing.quantity}
-                    onChange={(e) => updateIngredientQuantity(index, e.target.value)}
+                    value={ing.amount}
+                    onChange={(e) =>
+                      updateIngredientAmount(index, e.target.value)
+                    }
                     className="w-16 px-2 py-1 text-center rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
                     placeholder="1"
                   />
 
-                  <select
+                  <input
+                    type="text"
                     value={ing.unit}
-                    onChange={(e) => updateIngredientUnit(index, e.target.value)}
-                    className="px-2 py-1 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
-                  >
-                    {QUANTITY_UNITS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(e) =>
+                      updateIngredientUnit(index, e.target.value)
+                    }
+                    className="w-24 px-2 py-1 rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
+                    placeholder="cups, oz..."
+                  />
 
                   <Button
                     type="button"
