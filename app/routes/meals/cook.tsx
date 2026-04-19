@@ -9,6 +9,32 @@ import { AnimatePresence, motion } from "motion/react";
 type Step = { text: string; timerSeconds?: number };
 type ActiveTimer = { stepIndex: number; endTime: number } | null;
 
+function useWakeLock() {
+  const wakeLock = useRef<WakeLockSentinel | null>(null);
+
+  useEffect(() => {
+    if (!("wakeLock" in navigator)) return;
+
+    const acquire = async () => {
+      try {
+        wakeLock.current = await navigator.wakeLock.request("screen");
+      } catch {}
+    };
+
+    acquire();
+
+    const reacquire = () => {
+      if (document.visibilityState === "visible") acquire();
+    };
+    document.addEventListener("visibilitychange", reacquire);
+
+    return () => {
+      document.removeEventListener("visibilitychange", reacquire);
+      wakeLock.current?.release();
+    };
+  }, []);
+}
+
 function formatTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;
@@ -294,6 +320,7 @@ export function meta() {
 }
 
 export default function CookPage() {
+  useWakeLock();
   const params = useParams();
   const navigate = useNavigate();
   const mealId = params.id as string;
