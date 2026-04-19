@@ -15,7 +15,7 @@ export function AppHeader() {
         paddingBottom: isHome ? "0.5rem" : "0.75rem",
       }}
       transition={spring}
-      className="relative"
+      className="relative overflow-x-hidden"
     >
       <motion.div
         className="inline-flex"
@@ -40,7 +40,7 @@ export function AppHeader() {
           </motion.div>
           <motion.span
             className="font-bold inline-block"
-            animate={{ fontSize: isHome ? "6rem" : "2rem" }}
+            animate={{ fontSize: isHome ? "3.5rem" : "2rem" }}
             transition={spring}
           >
             Emille
