@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -11,11 +11,12 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { clerkMiddleware, rootAuthLoader } from '@clerk/react-router/server'
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useAuth } from "@clerk/react-router";
+import { ClerkProvider, SignIn, SignUp, SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/react-router";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Authenticated, ConvexReactClient, Unauthenticated, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { AppHeader } from "./components/app-header";
+import { OtterIcon } from "./components/icons/otter";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
@@ -87,23 +88,62 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+const clerkAppearance = {
+  variables: { colorPrimary: "#574964" },
+  elements: {
+    header: { display: "none" } as React.CSSProperties,
+    card: { boxShadow: "none", border: "none", backgroundColor: "transparent" } as React.CSSProperties,
+    cardBox: { boxShadow: "none", border: "none", backgroundColor: "transparent" } as React.CSSProperties,
+    footer: { display: "none" } as React.CSSProperties,
+    socialButtonsBlockButton: { backgroundColor: "white", border: "1px solid #e5e5e5" } as React.CSSProperties,
+  },
+};
+
+function AuthScreen() {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <OtterIcon className="w-40 h-40 mx-auto mb-4 text-plum" />
+        <h1 className="text-4xl font-bold text-plum mb-4">Emille</h1>
+        <p className="text-mauve mb-6">
+          {mode === "signin" ? "Sign in to manage your meals" : "Create your account"}
+        </p>
+        {mode === "signin" ? (
+          <SignIn appearance={clerkAppearance} />
+        ) : (
+          <SignUp appearance={clerkAppearance} />
+        )}
+        <p className="text-sm text-mauve mt-2">
+          {mode === "signin" ? (
+            <>
+              No account?{" "}
+              <button onClick={() => setMode("signup")} className="font-medium text-plum hover:underline">
+                Sign up
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button onClick={() => setMode("signin")} className="font-medium text-plum hover:underline">
+                Sign in
+              </button>
+            </>
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <ClerkProvider loaderData={loaderData}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <main>
           <Unauthenticated>
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="text-center">
-                <h1 className="text-4xl font-bold text-plum mb-4">Emille</h1>
-                <p className="text-mauve mb-6">Sign in to manage your meals</p>
-                <SignInButton>
-                  <button className="px-6 py-3 bg-plum text-white rounded-lg hover:bg-plum/90 transition-colors font-medium">
-                    Sign In
-                  </button>
-                </SignInButton>
-              </div>
-            </div>
+            <AuthScreen />
           </Unauthenticated>
           <Authenticated>
             <UserSync />

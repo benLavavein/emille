@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { Route } from "./+types/home";
-import { SignedIn, SignedOut } from "@clerk/react-router";
+import { SignedIn, SignedOut, useUser, useClerk } from "@clerk/react-router";
 import { Link } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "~/components/ui/tooltip";
-import { ShoppingCart, Calendar, ChefHat, Timer } from "lucide-react";
+import { ShoppingCart, Calendar, ChefHat, Timer, LogOut } from "lucide-react";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 
 export function meta({}: Route.MetaArgs) {
@@ -121,11 +121,33 @@ function CookingCard() {
   );
 }
 
+function GreetingCard() {
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const firstName = user?.firstName || user?.username || "there";
+
+  return (
+    <div className="flex items-center justify-between mb-8 p-5 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50">
+      <h2 className="text-xl font-semibold text-plum">
+        Hi, {firstName}!
+      </h2>
+      <button
+        onClick={() => signOut()}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-mauve hover:text-plum rounded-lg hover:bg-blush/30 transition-colors"
+      >
+        <LogOut className="size-3.5" />
+        Sign out
+      </button>
+    </div>
+  );
+}
+
 function HomeDashboard() {
   const activeMealPlan = useQuery(api.mealPlans.getActive);
 
   return (
     <>
+      <GreetingCard />
       <CookingCard />
 
       {/* Active Meal Plan Card */}

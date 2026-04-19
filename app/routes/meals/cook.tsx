@@ -111,7 +111,7 @@ function TimerButton({
       e.stopPropagation();
       startTimer({ stepIndex, durationSeconds: timerSeconds });
     },
-    [startTimer, stepIndex, timerSeconds]
+    [startTimer, stepIndex, timerSeconds],
   );
 
   const handleStop = useCallback(
@@ -119,7 +119,7 @@ function TimerButton({
       e.stopPropagation();
       clearTimer();
     },
-    [clearTimer]
+    [clearTimer],
   );
 
   if (justFinished) {
@@ -245,10 +245,9 @@ function FocusedMode({
           <motion.div
             key={currentStep}
             custom={direction}
-            initial={(d: number) => ({ opacity: 0, y: d >= 0 ? 60 : -60 })}
-            animate={{ opacity: 1, y: 0 }}
-            exit={(d: number) => ({ opacity: 0, y: d >= 0 ? -60 : 60 })}
-            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            initial={(d: number) => ({ opacity: 0, y: d >= 0 ? 40 : -40 })}
+            animate={{ opacity: 1, y: 0, transition: { type: "spring", stiffness: 500, damping: 38 } }}
+            exit={(d: number) => ({ opacity: 0, y: d >= 0 ? -40 : 40, transition: { duration: 0.1 } })}
             className="flex-1 flex flex-col items-center justify-center px-8 md:px-16 gap-6"
           >
             <p className="text-2xl md:text-4xl leading-relaxed text-plum text-center font-medium">
@@ -274,9 +273,7 @@ function FocusedMode({
             <div
               key={i}
               className={`h-1.5 rounded-full transition-all ${
-                i === currentStep
-                  ? "w-8 bg-plum"
-                  : "w-1.5 bg-blush/50"
+                i === currentStep ? "w-8 bg-plum" : "w-1.5 bg-blush/50"
               }`}
             />
           ))}
@@ -312,7 +309,10 @@ export default function CookPage() {
     if (!meal || hasInitialized.current) return;
     hasInitialized.current = true;
 
-    setCooking({ mealId: mealId as any, stepIndex: cooking?.mealId === mealId ? cooking.stepIndex : 0 });
+    setCooking({
+      mealId: mealId as any,
+      stepIndex: cooking?.mealId === mealId ? cooking.stepIndex : 0,
+    });
   }, [meal, cooking, setCooking, mealId]);
 
   const handleFinish = useCallback(async () => {
@@ -335,7 +335,9 @@ export default function CookPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50">
-          <h2 className="text-xl font-semibold text-plum mb-2">Meal not found</h2>
+          <h2 className="text-xl font-semibold text-plum mb-2">
+            Meal not found
+          </h2>
           <Link
             to="/meals"
             className="inline-block px-6 py-3 bg-plum text-white rounded-lg hover:bg-plum/90 transition-colors font-medium mt-4"
@@ -348,7 +350,8 @@ export default function CookPage() {
   }
 
   const steps: Step[] = meal.steps;
-  const activeTimer: ActiveTimer = (cooking?.mealId === mealId ? cooking.activeTimer : null) ?? null;
+  const activeTimer: ActiveTimer =
+    (cooking?.mealId === mealId ? cooking.activeTimer : null) ?? null;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
