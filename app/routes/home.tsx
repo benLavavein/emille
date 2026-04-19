@@ -8,13 +8,8 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "~/components/ui/tooltip";
-import { Sunrise, Sun, MoonStar, ShoppingCart, Calendar } from "lucide-react";
-
-const MEAL_TIME_ICONS = {
-  breakfast: Sunrise,
-  lunch: Sun,
-  dinner: MoonStar,
-} as const;
+import { ShoppingCart, Calendar } from "lucide-react";
+import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -90,7 +85,7 @@ function HomeDashboard() {
                 >
                   <span className="font-medium text-plum">{meal.name}</span>
                   <div className="flex items-end gap-1">
-                    {(["breakfast", "lunch", "dinner"] as const).map(
+                    {MEAL_TIMES.map(
                       (time, index) => {
                         const Icon = MEAL_TIME_ICONS[time];
                         const isActive = meal.mealTimes?.includes(time);
@@ -251,7 +246,6 @@ export default function Home() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Hero Section */}
       <div className="text-center mb-12">
-        <h1 className="text-8xl font-bold text-plum mb-4">Emille</h1>
         <p className="text-xl text-mauve max-w-2xl mx-auto">
           Your personal meal planning companion. Create recipes, track ingredients, 
           and make grocery shopping a breeze.

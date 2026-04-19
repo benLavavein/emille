@@ -194,8 +194,7 @@ export function MealForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || mealIngredients.length === 0 || mealTimes.length === 0)
-      return;
+    if (!name.trim() || mealTimes.length === 0) return;
 
     setIsSubmitting(true);
     try {
@@ -218,7 +217,7 @@ export function MealForm({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 min-h-screen flex flex-col">
+    <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col min-h-[calc(100vh-6rem)]">
       <div className="mb-8">
         <button
           type="button"
@@ -474,7 +473,6 @@ export function MealForm({
             disabled={
               isSubmitting ||
               !name.trim() ||
-              mealIngredients.length === 0 ||
               mealTimes.length === 0
             }
           >

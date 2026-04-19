@@ -2,14 +2,9 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Sunrise, Sun, MoonStar, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "~/components/ui/tooltip";
-
-const MEAL_TIME_ICONS = {
-  breakfast: Sunrise,
-  lunch: Sun,
-  dinner: MoonStar,
-} as const;
+import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 
 export function meta() {
   return [
@@ -137,7 +132,7 @@ export default function MealsPage() {
               
 
               <div className="flex items-end gap-1.5">
-                  {(["breakfast", "lunch", "dinner"] as const).map((time, index) => {
+                  {MEAL_TIMES.map((time, index) => {
                     const Icon = MEAL_TIME_ICONS[time];
                     const isActive = meal.mealTimes?.includes(time);
                     // Arc effect: middle icon higher, outer icons lower

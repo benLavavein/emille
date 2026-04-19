@@ -9,7 +9,8 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "~/components/ui/tooltip";
-import { Pencil, Trash2, Sunrise, Sun, MoonStar } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 
 export function meta() {
   return [
@@ -17,12 +18,6 @@ export function meta() {
     { name: "description", content: "View meal details" },
   ];
 }
-
-const MEAL_TIME_ICONS = {
-  breakfast: Sunrise,
-  lunch: Sun,
-  dinner: MoonStar,
-} as const;
 
 export default function MealDetailsPage() {
   const params = useParams();
@@ -107,7 +102,7 @@ export default function MealDetailsPage() {
 
         {/* Meal Times Icons */}
         <div className="flex items-end gap-2 mt-4">
-          {(["breakfast", "lunch", "dinner"] as const).map((time, index) => {
+          {MEAL_TIMES.map((time, index) => {
             const Icon = MEAL_TIME_ICONS[time];
             const isActive = meal.mealTimes?.includes(time);
             const arcOffset =

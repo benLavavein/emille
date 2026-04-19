@@ -17,10 +17,8 @@ import {
   Star,
   StarOff,
   ShoppingCart,
-  Sunrise,
-  Sun,
-  MoonStar,
 } from "lucide-react";
+import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 
 export function meta() {
   return [
@@ -28,12 +26,6 @@ export function meta() {
     { name: "description", content: "View meal plan details" },
   ];
 }
-
-const MEAL_TIME_ICONS = {
-  breakfast: Sunrise,
-  lunch: Sun,
-  dinner: MoonStar,
-} as const;
 
 export default function MealPlanDetailsPage() {
   const params = useParams();
@@ -257,7 +249,7 @@ export default function MealPlanDetailsPage() {
                   )}
                 </div>
                 <div className="flex items-end gap-1.5">
-                  {(["breakfast", "lunch", "dinner"] as const).map(
+                  {MEAL_TIMES.map(
                     (time, index) => {
                       const Icon = MEAL_TIME_ICONS[time];
                       const isActive = meal.mealTimes?.includes(time);
