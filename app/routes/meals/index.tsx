@@ -49,7 +49,7 @@ export default function MealsPage() {
           <h1 className="text-3xl font-bold text-plum">My Meals</h1>
         </div>
         <Link
-          to="/meals/new"
+          to="/meals/add"
           className="px-4 py-2 bg-plum text-white rounded-lg hover:bg-plum/90 transition-colors font-medium"
         >
           Add a meal
@@ -83,7 +83,7 @@ export default function MealsPage() {
           <h2 className="text-xl font-semibold text-plum mb-2">No meals yet</h2>
           <p className="text-mauve mb-6">Create your first meal to get started!</p>
           <Link
-            to="/meals/new"
+            to="/meals/add"
             className="inline-block px-6 py-3 bg-plum text-white rounded-lg hover:bg-plum/90 transition-colors font-medium"
           >
             Add your first meal

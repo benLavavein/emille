@@ -23,6 +23,7 @@
     "convex": "^1.31.6",
     "isbot": "^5.1.31",
     "lucide-react": "^0.563.0",
+    "motion": "^12.38.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router": "7.12.0",

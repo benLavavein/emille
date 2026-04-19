@@ -116,7 +116,7 @@ export default function NewMealPlanPage() {
             <div className="text-center py-8 bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50">
               <p className="text-mauve mb-4">No meals yet</p>
               <Link
-                to="/meals/new"
+                to="/meals/add"
                 className="text-plum hover:underline font-medium"
               >
                 Create a meal first
