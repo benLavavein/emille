@@ -8,6 +8,18 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     defaultStoreId: v.optional(v.id("groceryStores")),
+    currentlyCooking: v.optional(
+      v.object({
+        mealId: v.id("meals"),
+        stepIndex: v.number(),
+        activeTimer: v.optional(
+          v.object({
+            stepIndex: v.number(),
+            endTime: v.number(),
+          })
+        ),
+      })
+    ),
   }).index("by_clerk_id", ["clerkId"]),
 
   // Ingredients that the user has created/used
@@ -60,12 +72,6 @@ export default defineSchema({
           timerSeconds: v.optional(v.number()),
         })
       )
-    ),
-    activeTimer: v.optional(
-      v.object({
-        stepIndex: v.number(),
-        endTime: v.number(),
-      })
     ),
     createdAt: v.number(),
   })

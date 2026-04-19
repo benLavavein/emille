@@ -1,13 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useNavigate } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { X, Maximize2, Timer, Play, Square } from "lucide-react";
+import { X, Maximize2, Timer, Play, Square, CheckCircle2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { AnimatePresence, motion } from "motion/react";
 
 type Step = { text: string; timerSeconds?: number };
-type ActiveTimer = { stepIndex: number; endTime: number } | undefined;
+type ActiveTimer = { stepIndex: number; endTime: number } | null;
 
 function formatTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -73,20 +73,18 @@ function playChime() {
 }
 
 function TimerButton({
-  mealId,
   stepIndex,
   timerSeconds,
   activeTimer,
   large,
 }: {
-  mealId: string;
   stepIndex: number;
   timerSeconds: number;
   activeTimer: ActiveTimer;
   large?: boolean;
 }) {
-  const startTimer = useMutation(api.meals.startTimer);
-  const clearTimer = useMutation(api.meals.clearTimer);
+  const startTimer = useMutation(api.users.startTimer);
+  const clearTimer = useMutation(api.users.clearTimer);
 
   const isThisStep = activeTimer?.stepIndex === stepIndex;
   const endTime = isThisStep ? activeTimer!.endTime : null;
@@ -101,31 +99,27 @@ function TimerButton({
     if (justFinished && !hasPlayed.current) {
       hasPlayed.current = true;
       playChime();
-      clearTimer({ id: mealId as any });
+      clearTimer();
     }
     if (!justFinished) {
       hasPlayed.current = false;
     }
-  }, [justFinished, clearTimer, mealId]);
+  }, [justFinished, clearTimer]);
 
   const handleStart = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      startTimer({
-        id: mealId as any,
-        stepIndex,
-        durationSeconds: timerSeconds,
-      });
+      startTimer({ stepIndex, durationSeconds: timerSeconds });
     },
-    [startTimer, mealId, stepIndex, timerSeconds]
+    [startTimer, stepIndex, timerSeconds]
   );
 
   const handleStop = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      clearTimer({ id: mealId as any });
+      clearTimer();
     },
-    [clearTimer, mealId]
+    [clearTimer]
   );
 
   if (justFinished) {
@@ -192,6 +186,11 @@ function FocusedMode({
 }) {
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [direction, setDirection] = useState(0);
+  const setCooking = useMutation(api.users.setCooking);
+
+  useEffect(() => {
+    setCooking({ mealId: mealId as any, stepIndex: currentStep });
+  }, [currentStep, setCooking, mealId]);
 
   const goBack = useCallback(() => {
     if (currentStep > 0) {
@@ -258,7 +257,6 @@ function FocusedMode({
             {step.timerSeconds && (
               <div className="z-20 relative">
                 <TimerButton
-                  mealId={mealId}
                   stepIndex={currentStep}
                   timerSeconds={step.timerSeconds}
                   activeTimer={activeTimer}
@@ -300,23 +298,29 @@ export function meta() {
 
 export default function CookPage() {
   const params = useParams();
+  const navigate = useNavigate();
   const mealId = params.id as string;
   const meal = useQuery(api.meals.get, { id: mealId as any });
+  const cooking = useQuery(api.meals.getCooking);
+  const setCooking = useMutation(api.users.setCooking);
+  const clearCooking = useMutation(api.users.clearCooking);
   const [focused, setFocused] = useState(false);
   const [focusedStep, setFocusedStep] = useState(0);
-  const hasAutoResumed = useRef(false);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    if (!meal || hasAutoResumed.current) return;
+    if (!meal || hasInitialized.current) return;
+    hasInitialized.current = true;
 
-    if (meal.activeTimer && meal.activeTimer.endTime > Date.now()) {
-      hasAutoResumed.current = true;
-      setFocusedStep(meal.activeTimer.stepIndex);
-      setFocused(true);
-    }
-  }, [meal]);
+    setCooking({ mealId: mealId as any, stepIndex: cooking?.mealId === mealId ? cooking.stepIndex : 0 });
+  }, [meal, cooking, setCooking, mealId]);
 
-  if (meal === undefined) {
+  const handleFinish = useCallback(async () => {
+    await clearCooking();
+    navigate(`/meals/${mealId}`);
+  }, [clearCooking, navigate, mealId]);
+
+  if (meal === undefined || cooking === undefined) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="text-center py-12">
@@ -344,7 +348,7 @@ export default function CookPage() {
   }
 
   const steps: Step[] = meal.steps;
-  const activeTimer: ActiveTimer = meal.activeTimer ?? undefined;
+  const activeTimer: ActiveTimer = (cooking?.mealId === mealId ? cooking.activeTimer : null) ?? null;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -385,7 +389,6 @@ export default function CookPage() {
               {step.timerSeconds && (
                 <div className="mt-2">
                   <TimerButton
-                    mealId={mealId}
                     stepIndex={index}
                     timerSeconds={step.timerSeconds}
                     activeTimer={activeTimer}
@@ -395,6 +398,17 @@ export default function CookPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 text-center">
+        <Button
+          onClick={handleFinish}
+          variant="outline"
+          className="gap-2 text-green-700 border-green-300 hover:bg-green-50 hover:border-green-400"
+        >
+          <CheckCircle2 className="size-5" />
+          All Finished
+        </Button>
       </div>
 
       <AnimatePresence>

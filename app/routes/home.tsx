@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import type { Route } from "./+types/home";
 import { SignedIn, SignedOut } from "@clerk/react-router";
 import { Link } from "react-router";
@@ -8,7 +9,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "~/components/ui/tooltip";
-import { ShoppingCart, Calendar } from "lucide-react";
+import { ShoppingCart, Calendar, ChefHat, Timer } from "lucide-react";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 
 export function meta({}: Route.MetaArgs) {
@@ -55,11 +56,78 @@ function FeatureCard({
   );
 }
 
+function useCountdown(endTime: number | null) {
+  const [, forceRender] = useState(0);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (endTime === null) return;
+
+    const tick = () => {
+      forceRender((n) => n + 1);
+      if (Math.max(0, Math.round((endTime - Date.now()) / 1000)) > 0) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [endTime]);
+
+  if (endTime === null) return 0;
+  return Math.max(0, Math.round((endTime - Date.now()) / 1000));
+}
+
+function formatTime(totalSeconds: number): string {
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function CookingCard() {
+  const cooking = useQuery(api.meals.getCooking);
+  const endTime = cooking?.activeTimer?.endTime ?? null;
+  const remaining = useCountdown(endTime);
+  const timerRunning = endTime !== null && remaining > 0;
+
+  if (!cooking) return null;
+
+  return (
+    <div className="mb-8">
+      <Link
+        to={`/meals/${cooking.mealId}/cook`}
+        className="block bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-peach/50 hover:border-peach/80 transition-all"
+      >
+        <div className="flex items-center gap-3 mb-2">
+          <ChefHat className="w-6 h-6 text-plum" />
+          <h2 className="text-lg font-semibold text-plum">
+            Currently Cooking
+          </h2>
+        </div>
+        <p className="text-plum font-medium text-lg">{cooking.mealName}</p>
+        <div className="flex items-center gap-4 mt-1">
+          <p className="text-mauve text-sm">
+            Step {cooking.stepIndex + 1} of {cooking.totalSteps}
+          </p>
+          {timerRunning && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-plum text-white text-sm font-mono font-semibold tabular-nums">
+              <Timer className="size-3.5" />
+              {formatTime(remaining)}
+            </span>
+          )}
+        </div>
+      </Link>
+    </div>
+  );
+}
+
 function HomeDashboard() {
   const activeMealPlan = useQuery(api.mealPlans.getActive);
 
   return (
     <>
+      <CookingCard />
+
       {/* Active Meal Plan Card */}
       {activeMealPlan && (
         <div className="mb-8">

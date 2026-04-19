@@ -199,42 +199,23 @@ export const update = mutation({
   },
 });
 
-// Start a timer on a specific step
-export const startTimer = mutation({
-  args: {
-    id: v.id("meals"),
-    stepIndex: v.number(),
-    durationSeconds: v.number(),
-  },
-  handler: async (ctx, args) => {
+export const getCooking = query({
+  args: {},
+  handler: async (ctx) => {
     const user = await requireUser(ctx);
-    const meal = await ctx.db.get(args.id);
+    const cooking = user.currentlyCooking;
+    if (!cooking) return null;
 
-    if (!meal || meal.userId !== user._id) {
-      throw new Error("Meal not found");
-    }
+    const meal = await ctx.db.get(cooking.mealId);
+    if (!meal || meal.userId !== user._id) return null;
 
-    await ctx.db.patch(args.id, {
-      activeTimer: {
-        stepIndex: args.stepIndex,
-        endTime: Date.now() + args.durationSeconds * 1000,
-      },
-    });
-  },
-});
-
-// Clear the active timer
-export const clearTimer = mutation({
-  args: { id: v.id("meals") },
-  handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
-    const meal = await ctx.db.get(args.id);
-
-    if (!meal || meal.userId !== user._id) {
-      throw new Error("Meal not found");
-    }
-
-    await ctx.db.patch(args.id, { activeTimer: undefined });
+    return {
+      mealId: cooking.mealId,
+      mealName: meal.name,
+      stepIndex: cooking.stepIndex,
+      totalSteps: meal.steps.length,
+      activeTimer: cooking.activeTimer ?? null,
+    };
   },
 });
 

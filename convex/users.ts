@@ -81,6 +81,79 @@ export const getMe = query({
   },
 });
 
+export const setCooking = mutation({
+  args: {
+    mealId: v.id("meals"),
+    stepIndex: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const meal = await ctx.db.get(args.mealId);
+    if (!meal || meal.userId !== user._id) {
+      throw new Error("Meal not found");
+    }
+
+    const existing = user.currentlyCooking;
+    const preserveTimer =
+      existing?.mealId === args.mealId ? existing.activeTimer : undefined;
+
+    await ctx.db.patch(user._id, {
+      currentlyCooking: {
+        mealId: args.mealId,
+        stepIndex: args.stepIndex,
+        activeTimer: preserveTimer,
+      },
+    });
+  },
+});
+
+export const clearCooking = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    await ctx.db.patch(user._id, { currentlyCooking: undefined });
+  },
+});
+
+export const startTimer = mutation({
+  args: {
+    stepIndex: v.number(),
+    durationSeconds: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const cooking = user.currentlyCooking;
+    if (!cooking) throw new Error("Not currently cooking");
+
+    await ctx.db.patch(user._id, {
+      currentlyCooking: {
+        ...cooking,
+        activeTimer: {
+          stepIndex: args.stepIndex,
+          endTime: Date.now() + args.durationSeconds * 1000,
+        },
+      },
+    });
+  },
+});
+
+export const clearTimer = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    const cooking = user.currentlyCooking;
+    if (!cooking) return;
+
+    await ctx.db.patch(user._id, {
+      currentlyCooking: {
+        ...cooking,
+        activeTimer: undefined,
+      },
+    });
+  },
+});
+
 // Set the user's default store
 export const setDefaultStore = mutation({
   args: {
