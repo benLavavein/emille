@@ -12,6 +12,30 @@ import {
 import { Pencil, Trash2, Timer } from "lucide-react";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 
+const FRACTION_MAP: [number, string][] = [
+  [0.125, "⅛"], [0.25, "¼"], [0.333, "⅓"], [0.375, "⅜"],
+  [0.5, "½"], [0.625, "⅝"], [0.667, "⅔"], [0.75, "¾"], [0.875, "⅞"],
+];
+
+function formatAmount(amount: number | undefined): string {
+  if (amount === undefined || amount === null) return "";
+  if (Number.isInteger(amount)) return String(amount);
+
+  const whole = Math.floor(amount);
+  const frac = amount - whole;
+
+  const closest = FRACTION_MAP.reduce((best, [val, sym]) =>
+    Math.abs(frac - val) < Math.abs(frac - best[0]) ? [val, sym] : best
+  );
+
+  if (Math.abs(frac - (closest[0] as number)) < 0.05) {
+    return whole > 0 ? `${whole}${closest[1]}` : (closest[1] as string);
+  }
+
+  // Fall back to a clean decimal if no fraction is close enough
+  return String(parseFloat(amount.toFixed(2)));
+}
+
 export function meta() {
   return [
     { title: "Meal Details - Emille" },
@@ -167,10 +191,10 @@ export default function MealDetailsPage() {
             {meal.ingredientsWithDetails.map((ing: any, index: number) => (
               <div key={index} className="flex items-center gap-3 p-4">
                 <span className="text-mauve min-w-20">
-                  {[ing.amount, ing.unit].filter(Boolean).join(" ") || "—"}
+                  {[formatAmount(ing.amount), ing.unit].filter(Boolean).join(" ") || "—"}
                 </span>
                 <span className="font-medium text-plum">
-                  {ing.ingredient?.name || "Unknown ingredient"}
+                  {ing.name || ing.ingredient?.name || "Unknown ingredient"}
                 </span>
                 {ing.notes && (
                   <span className="text-mauve/70 text-sm">({ing.notes})</span>

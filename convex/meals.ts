@@ -52,10 +52,11 @@ export const get = query({
       return null;
     }
 
-    // Fetch ingredient details for each ingredient in the meal
     const ingredientsWithDetails = await Promise.all(
       meal.ingredients.map(async (ing) => {
-        const ingredient = await ctx.db.get(ing.ingredientId);
+        const ingredient = ing.ingredientId
+          ? await ctx.db.get(ing.ingredientId)
+          : null;
         return {
           ...ing,
           ingredient,
@@ -88,7 +89,8 @@ export const create = mutation({
     tagIds: v.array(v.id("tags")),
     ingredients: v.array(
       v.object({
-        ingredientId: v.id("ingredients"),
+        name: v.string(),
+        ingredientId: v.optional(v.id("ingredients")),
         amount: v.optional(v.float64()),
         unit: v.optional(v.string()),
         notes: v.optional(v.string()),
@@ -104,11 +106,12 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
-    // Verify all ingredients belong to this user
     for (const ing of args.ingredients) {
-      const ingredient = await ctx.db.get(ing.ingredientId);
-      if (!ingredient || ingredient.userId !== user._id) {
-        throw new Error("Invalid ingredient");
+      if (ing.ingredientId) {
+        const ingredient = await ctx.db.get(ing.ingredientId);
+        if (!ingredient || ingredient.userId !== user._id) {
+          throw new Error("Invalid ingredient");
+        }
       }
     }
 
@@ -142,7 +145,8 @@ export const update = mutation({
     ingredients: v.optional(
       v.array(
         v.object({
-          ingredientId: v.id("ingredients"),
+          name: v.string(),
+          ingredientId: v.optional(v.id("ingredients")),
           amount: v.optional(v.float64()),
           unit: v.optional(v.string()),
           notes: v.optional(v.string()),
@@ -166,12 +170,13 @@ export const update = mutation({
       throw new Error("Meal not found");
     }
 
-    // If updating ingredients, verify they all belong to this user
     if (args.ingredients) {
       for (const ing of args.ingredients) {
-        const ingredient = await ctx.db.get(ing.ingredientId);
-        if (!ingredient || ingredient.userId !== user._id) {
-          throw new Error("Invalid ingredient");
+        if (ing.ingredientId) {
+          const ingredient = await ctx.db.get(ing.ingredientId);
+          if (!ingredient || ingredient.userId !== user._id) {
+            throw new Error("Invalid ingredient");
+          }
         }
       }
     }

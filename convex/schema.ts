@@ -58,7 +58,8 @@ export default defineSchema({
     tagIds: v.array(v.id("tags")), // Tags for this meal
     ingredients: v.array(
       v.object({
-        ingredientId: v.id("ingredients"),
+        name: v.string(),
+        ingredientId: v.optional(v.id("ingredients")),
         amount: v.optional(v.float64()),
         unit: v.optional(v.string()),
         notes: v.optional(v.string()),

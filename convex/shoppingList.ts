@@ -227,11 +227,10 @@ export const addFromMealPlan = mutation({
       existingItems.filter((i) => i.ingredientId).map((i) => i.ingredientId)
     );
 
-    // Collect all ingredients from all meals in the plan
     const newItems: Array<{
       id: string;
       name: string;
-      ingredientId: string;
+      ingredientId?: string;
       checked: boolean;
       order: number;
     }> = [];
@@ -241,19 +240,14 @@ export const addFromMealPlan = mutation({
       if (!meal) continue;
 
       for (const mealIngredient of meal.ingredients) {
-        // Skip if already in list
-        if (existingIngredientIds.has(mealIngredient.ingredientId)) continue;
+        if (mealIngredient.ingredientId && existingIngredientIds.has(mealIngredient.ingredientId)) continue;
 
-        const ingredient = await ctx.db.get(mealIngredient.ingredientId);
-        if (!ingredient) continue;
-
-        // Check if we're about to add this ingredient
-        if (newItems.some((i) => i.ingredientId === ingredient._id)) continue;
+        if (newItems.some((i) => i.name === mealIngredient.name)) continue;
 
         newItems.push({
           id: crypto.randomUUID(),
-          name: ingredient.name,
-          ingredientId: ingredient._id,
+          name: mealIngredient.name,
+          ingredientId: mealIngredient.ingredientId,
           checked: false,
           order: existingItems.length + newItems.length,
         });

@@ -55,7 +55,7 @@ export default function EditMealPage() {
     mealTimes: meal.mealTimes || [],
     ingredients: meal.ingredientsWithDetails.map((ing: any) => ({
       ingredientId: ing.ingredientId,
-      name: ing.ingredient?.name || "Unknown",
+      name: ing.name || ing.ingredient?.name || "Unknown",
       amount: ing.amount ?? undefined,
       unit: ing.unit || "",
       notes: ing.notes,
@@ -74,7 +74,8 @@ export default function EditMealPage() {
       mealTimes: data.mealTimes,
       tagIds: data.tagIds as any,
       ingredients: data.ingredients.map((ing) => ({
-        ingredientId: ing.ingredientId as any,
+        name: ing.name,
+        ...(ing.ingredientId ? { ingredientId: ing.ingredientId as any } : {}),
         amount: ing.amount,
         unit: ing.unit,
         notes: ing.notes,

@@ -26,7 +26,7 @@ function AutoResizeTextarea(props: React.ComponentProps<"textarea">) {
 }
 
 export type MealIngredient = {
-  ingredientId: string;
+  ingredientId?: string;
   name: string;
   amount: number | undefined;
   unit: string;
@@ -48,7 +48,8 @@ export type MealFormData = {
   mealTimes: string[];
   tagIds: string[];
   ingredients: {
-    ingredientId: string;
+    name: string;
+    ingredientId?: string;
     amount: number | undefined;
     unit: string | undefined;
     notes: string | undefined;
@@ -83,7 +84,6 @@ export function MealForm({
 }: MealFormProps) {
   const existingIngredients = useQuery(api.ingredients.list);
   const existingTags = useQuery(api.tags.list);
-  const createIngredient = useMutation(api.ingredients.create);
   const createTag = useMutation(api.tags.create);
 
   const [name, setName] = useState(initialData?.name ?? "");
@@ -112,7 +112,7 @@ export function MealForm({
 
 
   const ingredientItems: ComboboxItem[] = (existingIngredients || [])
-    .filter((ing) => !mealIngredients.some((mi) => mi.ingredientId === ing._id))
+    .filter((ing) => !mealIngredients.some((mi) => mi.ingredientId === ing._id || mi.name === ing.name))
     .map((ing) => ({ id: ing._id, label: ing.name }));
 
   const tagItems: ComboboxItem[] = (existingTags || [])
@@ -133,14 +133,13 @@ export function MealForm({
   };
 
   const handleCreateIngredient = useCallback(
-    async (ingredientName: string) => {
-      const id = await createIngredient({ name: ingredientName });
+    (ingredientName: string) => {
       setMealIngredients((prev) => [
         ...prev,
-        { ingredientId: id, name: ingredientName, amount: 1, unit: "" },
+        { name: ingredientName, amount: 1, unit: "" },
       ]);
     },
-    [createIngredient]
+    []
   );
 
   const handleSelectTag = (item: ComboboxItem) => {
@@ -218,6 +217,7 @@ export function MealForm({
         mealTimes,
         tagIds: mealTags.map((t) => t.id),
         ingredients: mealIngredients.map((ing) => ({
+          name: ing.name,
           ingredientId: ing.ingredientId,
           amount: ing.amount,
           unit: ing.unit.trim() || undefined,
@@ -348,7 +348,7 @@ export function MealForm({
               ) : (
                 mealIngredients.map((ing, index) => (
                   <div
-                    key={`${ing.ingredientId}-${index}`}
+                    key={`${ing.ingredientId || ing.name}-${index}`}
                     className="flex items-center gap-3 py-2.5 group"
                   >
                     <span className="font-medium text-foreground flex-1 min-w-0 truncate">
