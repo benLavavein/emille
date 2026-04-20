@@ -271,9 +271,14 @@ function FocusedMode({
           <motion.div
             key={currentStep}
             custom={direction}
-            initial={(d: number) => ({ opacity: 0, y: d >= 0 ? 40 : -40 })}
-            animate={{ opacity: 1, y: 0, transition: { type: "spring", stiffness: 500, damping: 38 } }}
-            exit={(d: number) => ({ opacity: 0, y: d >= 0 ? -40 : 40, transition: { duration: 0.1 } })}
+            variants={{
+              enter: (d: number) => ({ opacity: 0, y: d >= 0 ? 40 : -40 }),
+              center: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 500, damping: 38 } },
+              exit: (d: number) => ({ opacity: 0, y: d >= 0 ? -40 : 40, transition: { duration: 0.1 } }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
             className="flex-1 flex flex-col items-center justify-center px-8 md:px-16 gap-6"
           >
             <p className="text-2xl md:text-4xl leading-relaxed text-plum text-center font-medium">
@@ -344,7 +349,7 @@ export default function CookPage() {
 
   const handleFinish = useCallback(async () => {
     await clearCooking();
-    navigate(`/meals/${mealId}`);
+    navigate("/");
   }, [clearCooking, navigate, mealId]);
 
   if (meal === undefined || cooking === undefined) {

@@ -64,7 +64,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Emille" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/otter.svg" />
+        <link rel="apple-touch-icon" href="/otter-192.png" />
         <Meta />
         <Links />
       </head>
