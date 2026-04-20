@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
+import { useUser, useClerk } from "@clerk/react-router";
 import { motion } from "motion/react";
-import { Menu, Home, UtensilsCrossed, Tag, Store, Calendar, ShoppingCart } from "lucide-react";
+import { Menu, Home, UtensilsCrossed, Tag, Store, Calendar, ShoppingCart, LogOut } from "lucide-react";
 import { OtterIcon } from "~/components/icons/otter";
 import {
   Sheet,
@@ -16,15 +17,18 @@ const spring = { type: "spring", stiffness: 300, damping: 30 } as const;
 const navLinks = [
   { href: "/", label: "Home", icon: Home },
   { href: "/meals", label: "Meals", icon: UtensilsCrossed },
+  { href: "/meal-plans", label: "Meal Plans", icon: Calendar },
   { href: "/ingredients", label: "Ingredients", icon: Tag },
   { href: "/stores", label: "Stores", icon: Store },
-  { href: "/meal-plans", label: "Meal Plans", icon: Calendar },
   { href: "/shopping-list", label: "Shopping List", icon: ShoppingCart },
 ];
 
 function MobileHeader() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const firstName = user?.firstName || user?.username || "User";
 
   return (
     <header className="md:hidden bg-plum text-white px-4 py-3 flex items-center">
@@ -65,6 +69,18 @@ function MobileHeader() {
               );
             })}
           </nav>
+          <div className="mt-auto px-6 pb-8 pt-4 border-t border-blush/30 mx-6">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-plum">{firstName}</span>
+              <button
+                onClick={() => signOut()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-mauve hover:text-plum rounded-lg hover:bg-blush/30 transition-colors"
+              >
+                <LogOut className="size-3.5" />
+                Sign out
+              </button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
       <span className="flex-1 text-center text-xl font-bold">Emille</span>
