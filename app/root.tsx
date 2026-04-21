@@ -147,11 +147,15 @@ export default function App({ loaderData }: Route.ComponentProps) {
           </Unauthenticated>
           <Authenticated>
             <UserSync />
-            <AppHeader />
-            <div className="flex min-h-screen">
-              <DesktopSidebar />
-              <div className="flex-1 min-w-0">
-                <Outlet />
+            <div className="flex h-screen min-h-0 flex-col overflow-hidden">
+              <div className="shrink-0">
+                <AppHeader />
+              </div>
+              <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
+                <DesktopSidebar />
+                <div className="min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+                  <Outlet />
+                </div>
               </div>
             </div>
           </Authenticated>

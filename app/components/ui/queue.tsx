@@ -3,10 +3,11 @@ import { Link, NavLink } from "react-router";
 import { ChevronLeft, Plus, Search } from "lucide-react";
 import { cn } from "~/lib/utils";
 
+/** Column shell: header stays in document flow; only {@link QueueBody} scrolls. */
 export const Queue = ({ className, ...props }: React.ComponentProps<"div">) => (
   <div
     className={cn(
-      "flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden",
+      "flex min-h-0 w-full flex-1 flex-col overflow-hidden",
       className,
     )}
     {...props}
@@ -107,6 +108,7 @@ export const QueueFooter = ({
   </div>
 );
 
+/** Sole vertical scroll region for the queue (list / empty states). */
 export const QueueBody = ({
   className,
   ...props

@@ -1,7 +1,7 @@
 import type { Route } from "./+types/home";
-import { SignedIn, SignedOut, useUser } from "@clerk/react-router";
+import { SignedIn, SignedOut } from "@clerk/react-router";
 import { Link } from "react-router";
-import { OtterIcon } from "~/components/icons/otter";
+import { HeroGreeting } from "~/components/dashboard/greeting";
 import { CookingCard } from "~/components/dashboard/cooking-card";
 import { CurrentMealPlan } from "~/components/dashboard/currentMealPlan";
 
@@ -52,66 +52,6 @@ function FeatureCard({
       <h3 className="text-xl font-semibold text-plum mb-2">{title}</h3>
       <p className="text-mauve">{description}</p>
     </Link>
-  );
-}
-
-const GREETINGS = [
-  "Hey there, {name}!",
-  "Welcome back, {name}!",
-  "Good to see you, {name}!",
-  "What's cookin', {name}?",
-  "Ready to cook, {name}?",
-  "Hungry yet, {name}?",
-  "Let's get cooking, {name}!",
-  "Chef {name} has arrived!",
-  "Howdy, {name}!",
-  "Bonjour, {name}!",
-  "Hola, {name}!",
-  "Looking good, {name}!",
-  "Ahoy, {name}!",
-  "Rise and dine, {name}!",
-  "Feeling hungry, {name}?",
-  "Time to feast, {name}!",
-  "Whisk me away, {name}!",
-  "Spice things up, {name}!",
-  "Chop chop, {name}!",
-  "Bon appétit, {name}!",
-  "Hey chef, {name}!",
-  "Kitchen calling, {name}!",
-  "Smells good already, {name}!",
-  "Table for one, {name}?",
-  "Otter-ly great to see you, {name}!",
-  "The kitchen awaits, {name}!",
-  "Stir it up, {name}!",
-  "What'll it be today, {name}?",
-  "Let's make something delicious, {name}!",
-  "Flavor town awaits, {name}!",
-];
-
-function getDailyGreeting(name: string, userId: string): string {
-  const today = new Date();
-  let seed =
-    today.getFullYear() * 10000 +
-    (today.getMonth() + 1) * 100 +
-    today.getDate();
-  for (let i = 0; i < userId.length; i++) {
-    seed = seed ^ (userId.charCodeAt(i) * (i + 1));
-  }
-  seed = ((seed * 2654435761) >>> 0) % GREETINGS.length;
-  return GREETINGS[seed].replace("{name}", name);
-}
-
-function HeroGreeting() {
-  const { user } = useUser();
-  const firstName = user?.firstName || user?.username || "there";
-
-  return (
-    <div className="flex items-center gap-6 mb-12">
-      <OtterIcon className="w-40 h-40 shrink-0" />
-      <h2 className="text-3xl font-bold text-plum">
-        {getDailyGreeting(firstName, user?.id || "")}
-      </h2>
-    </div>
   );
 }
 

@@ -93,7 +93,7 @@ function DesktopSidebar() {
   const firstName = user?.firstName || user?.username || "User";
 
   return (
-    <aside className="hidden md:flex flex-col w-65 shrink-0 h-screen sticky top-0 bg-plum text-white">
+    <aside className="hidden h-full min-h-0 w-65 shrink-0 flex-col bg-plum text-white md:flex">
       <Link to="/" className="px-6 py-7">
         <span className="text-2xl font-bold">Emille</span>
       </Link>
