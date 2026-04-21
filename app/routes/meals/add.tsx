@@ -96,6 +96,9 @@ export default function AddMealPage() {
   const handleSubmit = async (data: MealFormData) => {
     const mealId = await createMeal({
       name: data.name,
+      description: data.description,
+      prepTime: data.prepTime,
+      cookTime: data.cookTime,
       mealTimes: data.mealTimes,
       tagIds: data.tagIds as any,
       ingredients: data.ingredients.map((ing) => ({

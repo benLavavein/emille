@@ -1,21 +1,18 @@
-import { useState, useEffect, useRef } from "react";
 import type { Route } from "./+types/home";
-import { SignedIn, SignedOut, useUser, useClerk } from "@clerk/react-router";
+import { SignedIn, SignedOut, useUser } from "@clerk/react-router";
 import { Link } from "react-router";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "~/components/ui/tooltip";
-import { ShoppingCart, Calendar, ChefHat, Timer, LogOut } from "lucide-react";
-import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
+import { OtterIcon } from "~/components/icons/otter";
+import { CookingCard } from "~/components/dashboard/cooking-card";
+import { CurrentMealPlan } from "~/components/dashboard/currentMealPlan";
 
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "Emille - Your Meal Helper" },
-    { name: "description", content: "Plan meals, manage ingredients, and organize your grocery shopping" },
+    {
+      name: "description",
+      content:
+        "Plan meals, manage ingredients, and organize your grocery shopping",
+    },
   ];
 }
 
@@ -34,8 +31,10 @@ function FeatureCard({
 }) {
   const colorClasses = {
     plum: "bg-plum/10 border-plum/30 hover:bg-plum/20 hover:border-plum/50",
-    mauve: "bg-mauve/10 border-mauve/30 hover:bg-mauve/20 hover:border-mauve/50",
-    peach: "bg-peach/30 border-peach/50 hover:bg-peach/50 hover:border-peach/70",
+    mauve:
+      "bg-mauve/10 border-mauve/30 hover:bg-mauve/20 hover:border-mauve/50",
+    peach:
+      "bg-peach/30 border-peach/50 hover:bg-peach/50 hover:border-peach/70",
   };
 
   const iconColorClasses = {
@@ -56,178 +55,73 @@ function FeatureCard({
   );
 }
 
-function useCountdown(endTime: number | null) {
-  const [, forceRender] = useState(0);
-  const rafRef = useRef<number>(0);
+const GREETINGS = [
+  "Hey there, {name}!",
+  "Welcome back, {name}!",
+  "Good to see you, {name}!",
+  "What's cookin', {name}?",
+  "Ready to cook, {name}?",
+  "Hungry yet, {name}?",
+  "Let's get cooking, {name}!",
+  "Chef {name} has arrived!",
+  "Howdy, {name}!",
+  "Bonjour, {name}!",
+  "Hola, {name}!",
+  "Looking good, {name}!",
+  "Ahoy, {name}!",
+  "Rise and dine, {name}!",
+  "Feeling hungry, {name}?",
+  "Time to feast, {name}!",
+  "Whisk me away, {name}!",
+  "Spice things up, {name}!",
+  "Chop chop, {name}!",
+  "Bon appétit, {name}!",
+  "Hey chef, {name}!",
+  "Kitchen calling, {name}!",
+  "Smells good already, {name}!",
+  "Table for one, {name}?",
+  "Otter-ly great to see you, {name}!",
+  "The kitchen awaits, {name}!",
+  "Stir it up, {name}!",
+  "What'll it be today, {name}?",
+  "Let's make something delicious, {name}!",
+  "Flavor town awaits, {name}!",
+];
 
-  useEffect(() => {
-    if (endTime === null) return;
-
-    const tick = () => {
-      forceRender((n) => n + 1);
-      if (Math.max(0, Math.round((endTime - Date.now()) / 1000)) > 0) {
-        rafRef.current = requestAnimationFrame(tick);
-      }
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [endTime]);
-
-  if (endTime === null) return 0;
-  return Math.max(0, Math.round((endTime - Date.now()) / 1000));
+function getDailyGreeting(name: string, userId: string): string {
+  const today = new Date();
+  let seed =
+    today.getFullYear() * 10000 +
+    (today.getMonth() + 1) * 100 +
+    today.getDate();
+  for (let i = 0; i < userId.length; i++) {
+    seed = seed ^ (userId.charCodeAt(i) * (i + 1));
+  }
+  seed = ((seed * 2654435761) >>> 0) % GREETINGS.length;
+  return GREETINGS[seed].replace("{name}", name);
 }
 
-function formatTime(totalSeconds: number): string {
-  const mins = Math.floor(totalSeconds / 60);
-  const secs = totalSeconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
-function CookingCard() {
-  const cooking = useQuery(api.meals.getCooking);
-  const endTime = cooking?.activeTimer?.endTime ?? null;
-  const remaining = useCountdown(endTime);
-  const timerRunning = endTime !== null && remaining > 0;
-
-  if (!cooking) return null;
-
-  return (
-    <div className="mb-8">
-      <Link
-        to={`/meals/${cooking.mealId}/cook`}
-        className="block bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-peach/50 hover:border-peach/80 transition-all"
-      >
-        <div className="flex items-center gap-3 mb-2">
-          <ChefHat className="w-6 h-6 text-plum" />
-          <h2 className="text-lg font-semibold text-plum">
-            Currently Cooking
-          </h2>
-        </div>
-        <p className="text-plum font-medium text-lg">{cooking.mealName}</p>
-        <div className="flex items-center gap-4 mt-1">
-          <p className="text-mauve text-sm">
-            Step {cooking.stepIndex + 1} of {cooking.totalSteps}
-          </p>
-          {timerRunning && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-plum text-white text-sm font-mono font-semibold tabular-nums">
-              <Timer className="size-3.5" />
-              {formatTime(remaining)}
-            </span>
-          )}
-        </div>
-      </Link>
-    </div>
-  );
-}
-
-function GreetingCard() {
+function HeroGreeting() {
   const { user } = useUser();
-  const { signOut } = useClerk();
   const firstName = user?.firstName || user?.username || "there";
 
   return (
-    <div className="flex items-center justify-between mb-8 p-5 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50">
-      <h2 className="text-xl font-semibold text-plum">
-        Hi, {firstName}!
+    <div className="flex items-center gap-6 mb-12">
+      <OtterIcon className="w-40 h-40 shrink-0" />
+      <h2 className="text-3xl font-bold text-plum">
+        {getDailyGreeting(firstName, user?.id || "")}
       </h2>
-      <button
-        onClick={() => signOut()}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-mauve hover:text-plum rounded-lg hover:bg-blush/30 transition-colors"
-      >
-        <LogOut className="size-3.5" />
-        Sign out
-      </button>
     </div>
   );
 }
 
 function HomeDashboard() {
-  const activeMealPlan = useQuery(api.mealPlans.getActive);
-
   return (
     <>
-      <GreetingCard />
       <CookingCard />
 
-      {/* Active Meal Plan Card */}
-      {activeMealPlan && (
-        <div className="mb-8">
-          <Link
-            to={`/meal-plans/${activeMealPlan._id}`}
-            className="block bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-plum/30 hover:border-plum/50 transition-all"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <Calendar className="w-6 h-6 text-plum" />
-              <h2 className="text-lg font-semibold text-plum">
-                Your Meal Plan
-              </h2>
-              <span className="px-2 py-0.5 bg-peach text-plum text-xs rounded-full font-medium">
-                Active
-              </span>
-            </div>
-            <p className="text-mauve mb-4">{activeMealPlan.name}</p>
-            <div className="space-y-2">
-              {activeMealPlan.meals.slice(0, 4).map((meal: any) => (
-                <div
-                  key={meal._id}
-                  className="flex items-center justify-between p-3 bg-blush/20 rounded-lg"
-                >
-                  <span className="font-medium text-plum">{meal.name}</span>
-                  <div className="flex items-end gap-1">
-                    {MEAL_TIMES.map(
-                      (time, index) => {
-                        const Icon = MEAL_TIME_ICONS[time];
-                        const isActive = meal.mealTimes?.includes(time);
-                        const arcOffset =
-                          index === 1 ? "-translate-y-0.5" : "translate-y-0";
-                        return (
-                          <Tooltip key={time}>
-                            <TooltipTrigger asChild>
-                              <span className={arcOffset}>
-                                <Icon
-                                  className={`size-4 transition-colors ${
-                                    isActive ? "text-plum" : "text-plum/20"
-                                  }`}
-                                />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <span className="capitalize">{time}</span>
-                            </TooltipContent>
-                          </Tooltip>
-                        );
-                      }
-                    )}
-                  </div>
-                </div>
-              ))}
-              {activeMealPlan.meals.length > 4 && (
-                <p className="text-sm text-mauve text-center pt-1">
-                  +{activeMealPlan.meals.length - 4} more meals
-                </p>
-              )}
-            </div>
-          </Link>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <Link
-          to="/shopping-list"
-          className="flex items-center gap-3 p-4 bg-peach/40 rounded-xl border border-peach/60 hover:bg-peach/60 transition-all"
-        >
-          <ShoppingCart className="w-6 h-6 text-plum" />
-          <span className="font-medium text-plum">Shopping List</span>
-        </Link>
-        <Link
-          to="/meal-plans"
-          className="flex items-center gap-3 p-4 bg-plum/10 rounded-xl border border-plum/30 hover:bg-plum/20 transition-all"
-        >
-          <Calendar className="w-6 h-6 text-plum" />
-          <span className="font-medium text-plum">Meal Plans</span>
-        </Link>
+      <div className="mb-8">
+        <CurrentMealPlan />
       </div>
 
       {/* Feature Cards */}
@@ -305,7 +199,9 @@ function HomeDashboard() {
 
       {/* Getting Started */}
       <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-blush/50">
-        <h2 className="text-lg font-semibold text-plum mb-4">Getting Started</h2>
+        <h2 className="text-lg font-semibold text-plum mb-4">
+          Getting Started
+        </h2>
         <ul className="space-y-3 text-mauve">
           <li className="flex items-center gap-3">
             <span className="w-6 h-6 rounded-full bg-plum/20 text-plum flex items-center justify-center text-sm font-medium">
@@ -335,12 +231,7 @@ export default function Home() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Hero Section */}
-      <div className="text-center mb-12">
-        <p className="text-xl text-mauve max-w-2xl mx-auto">
-          Your personal meal planning companion. Create recipes, track ingredients, 
-          and make grocery shopping a breeze.
-        </p>
-      </div>
+      <HeroGreeting />
 
       <SignedIn>
         <HomeDashboard />
@@ -356,23 +247,62 @@ export default function Home() {
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="p-4 rounded-xl bg-plum/10 border border-plum/20">
-                  <svg className="w-8 h-8 mx-auto text-plum mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                  <svg
+                    className="w-8 h-8 mx-auto text-plum mb-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+                    />
                   </svg>
                   <span className="text-sm text-plum font-medium">Recipes</span>
                 </div>
                 <div className="p-4 rounded-xl bg-mauve/10 border border-mauve/20">
-                  <svg className="w-8 h-8 mx-auto text-mauve mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 6h.008v.008H6V6z" />
+                  <svg
+                    className="w-8 h-8 mx-auto text-mauve mb-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M6 6h.008v.008H6V6z"
+                    />
                   </svg>
-                  <span className="text-sm text-mauve font-medium">Ingredients</span>
+                  <span className="text-sm text-mauve font-medium">
+                    Ingredients
+                  </span>
                 </div>
                 <div className="p-4 rounded-xl bg-peach/30 border border-peach/50">
-                  <svg className="w-8 h-8 mx-auto text-plum mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                  <svg
+                    className="w-8 h-8 mx-auto text-plum mb-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
+                    />
                   </svg>
-                  <span className="text-sm text-plum font-medium">Shopping</span>
+                  <span className="text-sm text-plum font-medium">
+                    Shopping
+                  </span>
                 </div>
               </div>
             </div>

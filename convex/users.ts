@@ -112,6 +112,27 @@ export const clearCooking = mutation({
   args: {},
   handler: async (ctx) => {
     const user = await requireUser(ctx);
+    const mealId = user.currentlyCooking?.mealId;
+
+    if (mealId && user.activeMealPlanId) {
+      const plan = await ctx.db.get(user.activeMealPlanId);
+      if (plan && plan.userId === user._id) {
+        const inPlan = [
+          ...plan.breakfastMealIds,
+          ...plan.lunchMealIds,
+          ...plan.dinnerMealIds,
+        ].some((id) => id === mealId);
+        if (inPlan) {
+          const cooked = plan.cookedMealIds ?? [];
+          if (!cooked.includes(mealId)) {
+            await ctx.db.patch(plan._id, {
+              cookedMealIds: [...cooked, mealId],
+            });
+          }
+        }
+      }
+    }
+
     await ctx.db.patch(user._id, { currentlyCooking: undefined });
   },
 });

@@ -8,6 +8,7 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     defaultStoreId: v.optional(v.id("groceryStores")),
+    activeMealPlanId: v.optional(v.id("mealPlans")),
     currentlyCooking: v.optional(
       v.object({
         mealId: v.id("meals"),
@@ -54,6 +55,9 @@ export default defineSchema({
   meals: defineTable({
     userId: v.id("users"),
     name: v.string(),
+    description: v.optional(v.string()),
+    prepTime: v.optional(v.number()),
+    cookTime: v.optional(v.number()),
     mealTimes: v.array(v.string()), // ["breakfast", "lunch", "dinner"]
     tagIds: v.array(v.id("tags")), // Tags for this meal
     ingredients: v.array(
@@ -94,16 +98,15 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_and_name", ["userId", "name"]),
 
-  // Meal plans - a collection of meals
+  // Meal plans — history snapshots; active plan is users.activeMealPlanId
   mealPlans: defineTable({
     userId: v.id("users"),
-    name: v.string(),
-    mealIds: v.array(v.id("meals")),
-    isActive: v.boolean(), // Only one can be active at a time
+    breakfastMealIds: v.array(v.id("meals")),
+    lunchMealIds: v.array(v.id("meals")),
+    dinnerMealIds: v.array(v.id("meals")),
+    cookedMealIds: v.array(v.id("meals")),
     createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_active", ["userId", "isActive"]),
+  }).index("by_user", ["userId"]),
 
   // Shopping list for a user
   shoppingLists: defineTable({

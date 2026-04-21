@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useUser, useClerk } from "@clerk/react-router";
-import { motion } from "motion/react";
 import { Menu, Home, UtensilsCrossed, Tag, Store, Calendar, ShoppingCart, LogOut } from "lucide-react";
 import { OtterIcon } from "~/components/icons/otter";
 import {
@@ -12,12 +11,10 @@ import {
 } from "~/components/ui/sheet";
 import { VisuallyHidden } from "radix-ui";
 
-const spring = { type: "spring", stiffness: 300, damping: 30 } as const;
-
-const navLinks = [
+export const navLinks = [
   { href: "/", label: "Home", icon: Home },
   { href: "/meals", label: "Meals", icon: UtensilsCrossed },
-  { href: "/meal-plans", label: "Meal Plans", icon: Calendar },
+  { href: "/meal-plan", label: "Meal plan", icon: Calendar },
   { href: "/ingredients", label: "Ingredients", icon: Tag },
   { href: "/stores", label: "Stores", icon: Store },
   { href: "/shopping-list", label: "Shopping List", icon: ShoppingCart },
@@ -31,7 +28,7 @@ function MobileHeader() {
   const firstName = user?.firstName || user?.username || "User";
 
   return (
-    <header className="md:hidden bg-plum text-white px-4 py-3 flex items-center">
+    <header className="md:hidden bg-plum text-white px-4 h-12 flex items-center sticky top-0 z-40">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <button className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/10 transition-colors">
@@ -89,58 +86,61 @@ function MobileHeader() {
   );
 }
 
-function DesktopHeader() {
+function DesktopSidebar() {
   const location = useLocation();
-  const isHome = location.pathname === "/";
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const firstName = user?.firstName || user?.username || "User";
 
   return (
-    <motion.header
-      animate={{
-        paddingTop: isHome ? "2rem" : "0.75rem",
-        paddingBottom: isHome ? "0.5rem" : "0.75rem",
-      }}
-      transition={spring}
-      className="relative overflow-x-hidden hidden md:block"
-    >
-      <motion.div
-        className="inline-flex"
-        style={{ position: "relative" }}
-        animate={{
-          left: isHome ? "50%" : "100px",
-          x: isHome ? "-50%" : "0%",
-        }}
-        transition={spring}
-      >
-        <Link to="/" className="flex items-center gap-6 text-plum">
-          <motion.div
-            animate={{
-              width: isHome ? "10rem" : "0rem",
-              height: isHome ? "10rem" : "0rem",
-              opacity: isHome ? 1 : 0,
-            }}
-            transition={spring}
-            className="overflow-hidden shrink-0"
+    <aside className="hidden md:flex flex-col w-65 shrink-0 h-screen sticky top-0 bg-plum text-white">
+      <Link to="/" className="px-6 py-7">
+        <span className="text-2xl font-bold">Emille</span>
+      </Link>
+
+      <nav className="flex flex-col gap-0.5 px-3">
+        {navLinks.map(({ href, label, icon: Icon }) => {
+          const isActive =
+            href === "/"
+              ? location.pathname === "/"
+              : location.pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              to={href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive
+                  ? "bg-white/15 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Icon className="size-4" />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="flex-1" />
+
+      <div className="px-4 py-4 border-t border-white/15">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-white/80">{firstName}</span>
+          <button
+            onClick={() => signOut()}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-white/60 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
           >
-            <OtterIcon className="w-full h-full" />
-          </motion.div>
-          <motion.span
-            className="font-bold inline-block"
-            animate={{ fontSize: isHome ? "3.5rem" : "2rem" }}
-            transition={spring}
-          >
-            Emille
-          </motion.span>
-        </Link>
-      </motion.div>
-    </motion.header>
+            <LogOut className="size-3.5" />
+            Sign out
+          </button>
+        </div>
+      </div>
+    </aside>
   );
 }
 
 export function AppHeader() {
-  return (
-    <>
-      <MobileHeader />
-      <DesktopHeader />
-    </>
-  );
+  return <MobileHeader />;
 }
+
+export { DesktopSidebar };

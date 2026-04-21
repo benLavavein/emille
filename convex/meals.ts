@@ -85,6 +85,9 @@ export const get = query({
 export const create = mutation({
   args: {
     name: v.string(),
+    description: v.optional(v.string()),
+    prepTime: v.optional(v.number()),
+    cookTime: v.optional(v.number()),
     mealTimes: v.array(v.string()),
     tagIds: v.array(v.id("tags")),
     ingredients: v.array(
@@ -126,6 +129,9 @@ export const create = mutation({
     return await ctx.db.insert("meals", {
       userId: user._id,
       name: args.name,
+      description: args.description,
+      prepTime: args.prepTime,
+      cookTime: args.cookTime,
       mealTimes: args.mealTimes,
       tagIds: args.tagIds,
       ingredients: args.ingredients,
@@ -140,6 +146,9 @@ export const update = mutation({
   args: {
     id: v.id("meals"),
     name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    prepTime: v.optional(v.number()),
+    cookTime: v.optional(v.number()),
     mealTimes: v.optional(v.array(v.string())),
     tagIds: v.optional(v.array(v.id("tags"))),
     ingredients: v.optional(
@@ -194,6 +203,9 @@ export const update = mutation({
     const updates: Record<string, unknown> = {};
 
     if (args.name !== undefined) updates.name = args.name;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.prepTime !== undefined) updates.prepTime = args.prepTime;
+    if (args.cookTime !== undefined) updates.cookTime = args.cookTime;
     if (args.mealTimes !== undefined) updates.mealTimes = args.mealTimes;
     if (args.tagIds !== undefined) updates.tagIds = args.tagIds;
     if (args.ingredients !== undefined) updates.ingredients = args.ingredients;

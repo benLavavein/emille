@@ -1,13 +1,31 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Link, useParams, useNavigate } from "react-router";
+import { Link, useParams, useNavigate, useSearchParams } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { X, Maximize2, Timer, Play, Square, CheckCircle2 } from "lucide-react";
-import { Button } from "~/components/ui/button";
+import { X, Timer, Play, Square, CheckCircle2, Carrot, ListOrdered } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
 type Step = { text: string; timerSeconds?: number };
 type ActiveTimer = { stepIndex: number; endTime: number } | null;
+
+const FRACTION_MAP: [number, string][] = [
+  [0.125, "⅛"], [0.25, "¼"], [0.333, "⅓"], [0.375, "⅜"],
+  [0.5, "½"], [0.625, "⅝"], [0.667, "⅔"], [0.75, "¾"], [0.875, "⅞"],
+];
+
+function formatAmount(amount: number | undefined): string {
+  if (amount === undefined || amount === null) return "";
+  if (Number.isInteger(amount)) return String(amount);
+  const whole = Math.floor(amount);
+  const frac = amount - whole;
+  const closest = FRACTION_MAP.reduce((best, [val, sym]) =>
+    Math.abs(frac - val) < Math.abs(frac - best[0]) ? [val, sym] : best
+  );
+  if (Math.abs(frac - (closest[0] as number)) < 0.05) {
+    return whole > 0 ? `${whole}${closest[1]}` : (closest[1] as string);
+  }
+  return String(parseFloat(amount.toFixed(2)));
+}
 
 function useWakeLock() {
   const wakeLock = useRef<WakeLockSentinel | null>(null);
@@ -197,54 +215,22 @@ function TimerButton({
   );
 }
 
-function FocusedMode({
-  steps,
-  mealId,
-  activeTimer,
-  initialStep,
+function IngredientsOverlay({
+  ingredients,
   onClose,
 }: {
-  steps: Step[];
-  mealId: string;
-  activeTimer: ActiveTimer;
-  initialStep: number;
+  ingredients: { name: string; amount?: number; unit?: string; notes?: string }[];
   onClose: () => void;
 }) {
-  const [currentStep, setCurrentStep] = useState(initialStep);
-  const [direction, setDirection] = useState(0);
-  const setCooking = useMutation(api.users.setCooking);
-
-  useEffect(() => {
-    setCooking({ mealId: mealId as any, stepIndex: currentStep });
-  }, [currentStep, setCooking, mealId]);
-
-  const goBack = useCallback(() => {
-    if (currentStep > 0) {
-      setDirection(-1);
-      setCurrentStep((s) => s - 1);
-    }
-  }, [currentStep]);
-
-  const goForward = useCallback(() => {
-    if (currentStep < steps.length - 1) {
-      setDirection(1);
-      setCurrentStep((s) => s + 1);
-    }
-  }, [currentStep, steps.length]);
-
-  const step = steps[currentStep];
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-white flex flex-col select-none"
+      className="fixed inset-0 z-60 bg-white flex flex-col"
     >
       <div className="flex items-center justify-between px-6 py-4 border-b border-blush/30">
-        <span className="text-sm font-medium text-mauve">
-          Step {currentStep + 1} of {steps.length}
-        </span>
+        <span className="text-lg font-semibold text-plum">Ingredients</span>
         <button
           onClick={onClose}
           className="p-2 rounded-lg text-mauve hover:text-plum hover:bg-blush/20 transition-colors"
@@ -252,7 +238,140 @@ function FocusedMode({
           <X className="size-6" />
         </button>
       </div>
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="divide-y divide-blush/30">
+          {ingredients.map((ing, i) => (
+            <div key={i} className="flex items-center gap-3 py-3">
+              <span className="text-mauve min-w-20 text-sm">
+                {[formatAmount(ing.amount), ing.unit].filter(Boolean).join(" ") || "—"}
+              </span>
+              <span className="font-medium text-plum">{ing.name}</span>
+              {ing.notes && (
+                <span className="text-mauve/70 text-sm">({ing.notes})</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
+export function meta() {
+  return [
+    { title: "Cook Mode - Emille" },
+    { name: "description", content: "Step-by-step cooking guide" },
+  ];
+}
+
+export default function CookPage() {
+  useWakeLock();
+  const params = useParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const mealId = params.id as string;
+  const meal = useQuery(api.meals.get, { id: mealId as any });
+  const cooking = useQuery(api.meals.getCooking);
+  const setCooking = useMutation(api.users.setCooking);
+  const clearCooking = useMutation(api.users.clearCooking);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [direction, setDirection] = useState(0);
+  const [showIngredients, setShowIngredients] = useState(
+    () => searchParams.has("ingredients")
+  );
+  const hasInitialized = useRef(false);
+
+  useEffect(() => {
+    if (!meal || hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const resumeStep = cooking?.mealId === mealId ? cooking.stepIndex : 0;
+    setCurrentStep(resumeStep);
+    setCooking({ mealId: mealId as any, stepIndex: resumeStep });
+  }, [meal, cooking, setCooking, mealId]);
+
+  useEffect(() => {
+    if (hasInitialized.current && meal) {
+      setCooking({ mealId: mealId as any, stepIndex: currentStep });
+    }
+  }, [currentStep, setCooking, mealId, meal]);
+
+  const handleFinish = useCallback(async () => {
+    await clearCooking();
+    navigate(`/meals/${mealId}`);
+  }, [clearCooking, navigate, mealId]);
+
+  const goBack = useCallback(() => {
+    setDirection(-1);
+    setCurrentStep((s) => Math.max(0, s - 1));
+  }, []);
+
+  const goForward = useCallback(() => {
+    if (!meal) return;
+    setDirection(1);
+    setCurrentStep((s) => Math.min(meal.steps.length - 1, s + 1));
+  }, [meal]);
+
+  if (meal === undefined || cooking === undefined) {
+    return (
+      <div className="fixed inset-0 bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-plum/30 border-t-plum rounded-full animate-spin mx-auto"></div>
+          <p className="text-mauve mt-4">Loading recipe...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (meal === null) {
+    return (
+      <div className="fixed inset-0 bg-white flex items-center justify-center">
+        <div className="text-center p-8 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50">
+          <h2 className="text-xl font-semibold text-plum mb-2">Meal not found</h2>
+          <Link
+            to="/meals"
+            className="inline-block px-6 py-3 bg-plum text-white rounded-lg hover:bg-plum/90 transition-colors font-medium mt-4"
+          >
+            Back to meals
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const steps: Step[] = meal.steps;
+  const step = steps[currentStep];
+  const activeTimer: ActiveTimer =
+    (cooking?.mealId === mealId ? cooking.activeTimer : null) ?? null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-white flex flex-col select-none">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-blush/30">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-mauve">
+            Step {currentStep + 1} of {steps.length}
+          </span>
+          <span className="text-sm text-mauve/50 hidden sm:inline">· {meal.name}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleFinish}
+            className="p-2 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
+            title="All Finished"
+          >
+            <CheckCircle2 className="size-5" />
+          </button>
+          <Link
+            to={`/meals/${mealId}`}
+            className="p-2 rounded-lg text-mauve hover:text-plum hover:bg-blush/20 transition-colors"
+          >
+            <X className="size-6" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Main step area */}
       <div className="flex-1 flex flex-col relative overflow-hidden">
         <button
           onClick={goBack}
@@ -298,6 +417,7 @@ function FocusedMode({
         </AnimatePresence>
       </div>
 
+      {/* Footer */}
       <div className="px-6 py-4 border-t border-blush/30">
         <div className="flex gap-1.5 justify-center">
           {steps.map((_, i) => (
@@ -310,150 +430,30 @@ function FocusedMode({
           ))}
         </div>
         <p className="text-center text-xs text-mauve/50 mt-2">
-          Tap top to go back · Tap bottom to go forward
+          Tap top half to go back · Tap bottom half to go forward
         </p>
       </div>
-    </motion.div>
-  );
-}
 
-export function meta() {
-  return [
-    { title: "Cook Mode - Emille" },
-    { name: "description", content: "Step-by-step cooking guide" },
-  ];
-}
+      {/* Floating toggle button */}
+      <button
+        onClick={() => setShowIngredients(true)}
+        className="fixed top-20 right-4 z-55 bg-white/90 backdrop-blur-sm border border-blush/50 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow text-plum"
+        title="View ingredients"
+      >
+        <Carrot className="size-5" />
+      </button>
 
-export default function CookPage() {
-  useWakeLock();
-  const params = useParams();
-  const navigate = useNavigate();
-  const mealId = params.id as string;
-  const meal = useQuery(api.meals.get, { id: mealId as any });
-  const cooking = useQuery(api.meals.getCooking);
-  const setCooking = useMutation(api.users.setCooking);
-  const clearCooking = useMutation(api.users.clearCooking);
-  const [focused, setFocused] = useState(false);
-  const [focusedStep, setFocusedStep] = useState(0);
-  const hasInitialized = useRef(false);
-
-  useEffect(() => {
-    if (!meal || hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    setCooking({
-      mealId: mealId as any,
-      stepIndex: cooking?.mealId === mealId ? cooking.stepIndex : 0,
-    });
-  }, [meal, cooking, setCooking, mealId]);
-
-  const handleFinish = useCallback(async () => {
-    await clearCooking();
-    navigate("/");
-  }, [clearCooking, navigate, mealId]);
-
-  if (meal === undefined || cooking === undefined) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <div className="w-8 h-8 border-2 border-plum/30 border-t-plum rounded-full animate-spin mx-auto"></div>
-          <p className="text-mauve mt-4">Loading recipe...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (meal === null) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50">
-          <h2 className="text-xl font-semibold text-plum mb-2">
-            Meal not found
-          </h2>
-          <Link
-            to="/meals"
-            className="inline-block px-6 py-3 bg-plum text-white rounded-lg hover:bg-plum/90 transition-colors font-medium mt-4"
-          >
-            Back to meals
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const steps: Step[] = meal.steps;
-  const activeTimer: ActiveTimer =
-    (cooking?.mealId === mealId ? cooking.activeTimer : null) ?? null;
-
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <Link
-          to={`/meals/${mealId}`}
-          className="text-mauve hover:text-plum transition-colors text-sm mb-2 inline-block"
-        >
-          ← Back to {meal.name}
-        </Link>
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-plum">Cook: {meal.name}</h1>
-          <Button
-            onClick={() => {
-              setFocusedStep(0);
-              setFocused(true);
-            }}
-            variant="outline"
-            className="gap-2"
-          >
-            <Maximize2 className="size-4" />
-            Focused Mode
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {steps.map((step, index) => (
-          <div
-            key={index}
-            className="flex gap-4 p-5 bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50"
-          >
-            <span className="w-10 h-10 rounded-full bg-plum/20 text-plum flex items-center justify-center text-lg font-semibold shrink-0">
-              {index + 1}
-            </span>
-            <div className="flex-1 pt-1.5">
-              <p className="text-plum text-lg leading-relaxed">{step.text}</p>
-              {step.timerSeconds && (
-                <div className="mt-2">
-                  <TimerButton
-                    stepIndex={index}
-                    timerSeconds={step.timerSeconds}
-                    activeTimer={activeTimer}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-8 text-center">
-        <Button
-          onClick={handleFinish}
-          variant="outline"
-          className="gap-2 text-green-700 border-green-300 hover:bg-green-50 hover:border-green-400"
-        >
-          <CheckCircle2 className="size-5" />
-          All Finished
-        </Button>
-      </div>
-
+      {/* Ingredients overlay */}
       <AnimatePresence>
-        {focused && (
-          <FocusedMode
-            steps={steps}
-            mealId={mealId}
-            activeTimer={activeTimer}
-            initialStep={focusedStep}
-            onClose={() => setFocused(false)}
+        {showIngredients && (
+          <IngredientsOverlay
+            ingredients={meal.ingredientsWithDetails.map((ing: any) => ({
+              name: ing.name || ing.ingredient?.name || "Unknown",
+              amount: ing.amount,
+              unit: ing.unit,
+              notes: ing.notes,
+            }))}
+            onClose={() => setShowIngredients(false)}
           />
         )}
       </AnimatePresence>

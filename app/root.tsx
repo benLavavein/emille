@@ -15,7 +15,7 @@ import { ClerkProvider, SignIn, SignUp, SignedIn, SignedOut, SignInButton, SignU
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Authenticated, ConvexReactClient, Unauthenticated, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { AppHeader } from "./components/app-header";
+import { AppHeader, DesktopSidebar } from "./components/app-header";
 import { OtterIcon } from "./components/icons/otter";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -148,7 +148,12 @@ export default function App({ loaderData }: Route.ComponentProps) {
           <Authenticated>
             <UserSync />
             <AppHeader />
-            <Outlet />
+            <div className="flex min-h-screen">
+              <DesktopSidebar />
+              <div className="flex-1 min-w-0">
+                <Outlet />
+              </div>
+            </div>
           </Authenticated>
         </main>
       </ConvexProviderWithClerk>

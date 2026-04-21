@@ -52,6 +52,9 @@ export default function EditMealPage() {
 
   const initialData = {
     name: meal.name,
+    description: meal.description,
+    prepTime: meal.prepTime,
+    cookTime: meal.cookTime,
     mealTimes: meal.mealTimes || [],
     ingredients: meal.ingredientsWithDetails.map((ing: any) => ({
       ingredientId: ing.ingredientId,
@@ -71,6 +74,9 @@ export default function EditMealPage() {
     await updateMeal({
       id: mealId as any,
       name: data.name,
+      description: data.description,
+      prepTime: data.prepTime,
+      cookTime: data.cookTime,
       mealTimes: data.mealTimes,
       tagIds: data.tagIds as any,
       ingredients: data.ingredients.map((ing) => ({

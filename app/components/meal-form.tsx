@@ -45,6 +45,9 @@ export type MealStep = {
 
 export type MealFormData = {
   name: string;
+  description?: string;
+  prepTime?: number;
+  cookTime?: number;
   mealTimes: string[];
   tagIds: string[];
   ingredients: {
@@ -60,6 +63,9 @@ export type MealFormData = {
 type MealFormProps = {
   initialData?: {
     name: string;
+    description?: string;
+    prepTime?: number;
+    cookTime?: number;
     mealTimes: string[];
     ingredients: MealIngredient[];
     tags: MealTag[];
@@ -87,6 +93,13 @@ export function MealForm({
   const createTag = useMutation(api.tags.create);
 
   const [name, setName] = useState(initialData?.name ?? "");
+  const [description, setDescription] = useState(initialData?.description ?? "");
+  const [prepTimeMin, setPrepTimeMin] = useState(
+    initialData?.prepTime ? String(Math.round(initialData.prepTime / 60)) : ""
+  );
+  const [cookTimeMin, setCookTimeMin] = useState(
+    initialData?.cookTime ? String(Math.round(initialData.cookTime / 60)) : ""
+  );
   const [mealTimes, setMealTimes] = useState<string[]>(
     initialData?.mealTimes ?? []
   );
@@ -212,8 +225,13 @@ export function MealForm({
 
     setIsSubmitting(true);
     try {
+      const prepSecs = parseFloat(prepTimeMin) > 0 ? Math.round(parseFloat(prepTimeMin) * 60) : undefined;
+      const cookSecs = parseFloat(cookTimeMin) > 0 ? Math.round(parseFloat(cookTimeMin) * 60) : undefined;
       await onSubmit({
         name: name.trim(),
+        description: description.trim() || undefined,
+        prepTime: prepSecs,
+        cookTime: cookSecs,
         mealTimes,
         tagIds: mealTags.map((t) => t.id),
         ingredients: mealIngredients.map((ing) => ({
@@ -268,6 +286,56 @@ export function MealForm({
             className="w-full px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum placeholder:text-mauve/50"
             required
           />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-plum mb-2"
+          >
+            Description
+          </label>
+          <AutoResizeTextarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            placeholder="A short description of this meal..."
+            className="w-full px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum placeholder:text-mauve/50 resize-none overflow-hidden"
+          />
+        </div>
+
+        {/* Prep & Cook Time */}
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label htmlFor="prepTime" className="block text-sm font-medium text-plum mb-2">
+              Prep Time (min)
+            </label>
+            <input
+              id="prepTime"
+              type="number"
+              min="0"
+              value={prepTimeMin}
+              onChange={(e) => setPrepTimeMin(e.target.value)}
+              placeholder="10"
+              className="w-full px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum placeholder:text-mauve/50"
+            />
+          </div>
+          <div className="flex-1">
+            <label htmlFor="cookTime" className="block text-sm font-medium text-plum mb-2">
+              Cook Time (min)
+            </label>
+            <input
+              id="cookTime"
+              type="number"
+              min="0"
+              value={cookTimeMin}
+              onChange={(e) => setCookTimeMin(e.target.value)}
+              placeholder="30"
+              className="w-full px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum placeholder:text-mauve/50"
+            />
+          </div>
         </div>
 
         {/* Meal Times */}

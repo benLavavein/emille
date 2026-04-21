@@ -235,7 +235,15 @@ export const addFromMealPlan = mutation({
       order: number;
     }> = [];
 
-    for (const mealId of mealPlan.mealIds) {
+    const mealIds = [
+      ...new Set([
+        ...mealPlan.breakfastMealIds,
+        ...mealPlan.lunchMealIds,
+        ...mealPlan.dinnerMealIds,
+      ]),
+    ];
+
+    for (const mealId of mealIds) {
       const meal = await ctx.db.get(mealId);
       if (!meal) continue;
 

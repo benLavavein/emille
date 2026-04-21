@@ -1,83 +1,87 @@
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./users";
 
-// Get all meal plans for the current user
-export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await requireUser(ctx);
+async function mealWithTags(ctx: QueryCtx, mealId: Id<"meals">) {
+  const meal = await ctx.db.get(mealId);
+  if (!meal) return null;
 
-    const mealPlans = await ctx.db
-      .query("mealPlans")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .collect();
+  const tags = await Promise.all(
+    (meal.tagIds || []).map(async (tagId) => {
+      const tag = await ctx.db.get(tagId);
+      return tag ? { _id: tag._id, name: tag.name } : null;
+    })
+  );
 
-    // Fetch meal details for each plan
-    const plansWithMeals = await Promise.all(
-      mealPlans.map(async (plan) => {
-        const meals = await Promise.all(
-          plan.mealIds.map(async (mealId) => {
-            const meal = await ctx.db.get(mealId);
-            return meal ? { _id: meal._id, name: meal.name } : null;
-          })
-        );
-        return {
-          ...plan,
-          meals: meals.filter(Boolean),
-        };
-      })
-    );
+  return {
+    ...meal,
+    tags: tags.filter(Boolean),
+  };
+}
 
-    return plansWithMeals;
-  },
-});
+async function resolveSlot(
+  ctx: QueryCtx,
+  mealIds: Id<"meals">[]
+): Promise<Array<NonNullable<Awaited<ReturnType<typeof mealWithTags>>>>> {
+  const out: Array<NonNullable<Awaited<ReturnType<typeof mealWithTags>>>> = [];
+  for (const mealId of mealIds) {
+    const m = await mealWithTags(ctx, mealId);
+    if (m) out.push(m);
+  }
+  return out;
+}
 
-// Get the active meal plan
+function pruneCookedToPlan(
+  plan: Doc<"mealPlans">,
+  breakfast: Id<"meals">[],
+  lunch: Id<"meals">[],
+  dinner: Id<"meals">[]
+): Id<"meals">[] {
+  const allowed = new Set([...breakfast, ...lunch, ...dinner]);
+  return (plan.cookedMealIds ?? []).filter((id) => allowed.has(id));
+}
+
+async function validateMealOwnership(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  mealIds: Id<"meals">[]
+) {
+  for (const mealId of mealIds) {
+    const meal = await ctx.db.get(mealId);
+    if (!meal || meal.userId !== userId) {
+      throw new Error("Invalid meal");
+    }
+  }
+}
+
 export const getActive = query({
   args: {},
   handler: async (ctx) => {
     const user = await requireUser(ctx);
+    if (!user.activeMealPlanId) return null;
 
-    const activePlan = await ctx.db
-      .query("mealPlans")
-      .withIndex("by_user_active", (q) =>
-        q.eq("userId", user._id).eq("isActive", true)
-      )
-      .first();
+    const activePlan = await ctx.db.get(user.activeMealPlanId);
+    if (!activePlan || activePlan.userId !== user._id) {
+      return null;
+    }
 
-    if (!activePlan) return null;
-
-    // Fetch full meal details
-    const meals = await Promise.all(
-      activePlan.mealIds.map(async (mealId) => {
-        const meal = await ctx.db.get(mealId);
-        if (!meal) return null;
-
-        // Get tag details
-        const tags = await Promise.all(
-          (meal.tagIds || []).map(async (tagId) => {
-            const tag = await ctx.db.get(tagId);
-            return tag ? { _id: tag._id, name: tag.name } : null;
-          })
-        );
-
-        return {
-          ...meal,
-          tags: tags.filter(Boolean),
-        };
-      })
-    );
+    const [breakfastMeals, lunchMeals, dinnerMeals] = await Promise.all([
+      resolveSlot(ctx, activePlan.breakfastMealIds),
+      resolveSlot(ctx, activePlan.lunchMealIds),
+      resolveSlot(ctx, activePlan.dinnerMealIds),
+    ]);
 
     return {
       ...activePlan,
-      meals: meals.filter(Boolean),
+      breakfastMeals,
+      lunchMeals,
+      dinnerMeals,
     };
   },
 });
 
-// Get a single meal plan by ID
 export const get = query({
   args: { id: v.id("mealPlans") },
   handler: async (ctx, args) => {
@@ -88,81 +92,82 @@ export const get = query({
       return null;
     }
 
-    // Fetch full meal details
-    const meals = await Promise.all(
-      plan.mealIds.map(async (mealId) => {
-        const meal = await ctx.db.get(mealId);
-        if (!meal) return null;
-
-        const tags = await Promise.all(
-          (meal.tagIds || []).map(async (tagId) => {
-            const tag = await ctx.db.get(tagId);
-            return tag ? { _id: tag._id, name: tag.name } : null;
-          })
-        );
-
-        return {
-          ...meal,
-          tags: tags.filter(Boolean),
-        };
-      })
-    );
+    const [breakfastMeals, lunchMeals, dinnerMeals] = await Promise.all([
+      resolveSlot(ctx, plan.breakfastMealIds),
+      resolveSlot(ctx, plan.lunchMealIds),
+      resolveSlot(ctx, plan.dinnerMealIds),
+    ]);
 
     return {
       ...plan,
-      meals: meals.filter(Boolean),
+      breakfastMeals,
+      lunchMeals,
+      dinnerMeals,
     };
   },
 });
 
-// Create a new meal plan
+export const ensureActiveMealPlan = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    if (user.activeMealPlanId) {
+      const existing = await ctx.db.get(user.activeMealPlanId);
+      if (existing && existing.userId === user._id) {
+        return user.activeMealPlanId;
+      }
+    }
+
+    const id = await ctx.db.insert("mealPlans", {
+      userId: user._id,
+      breakfastMealIds: [],
+      lunchMealIds: [],
+      dinnerMealIds: [],
+      cookedMealIds: [],
+      createdAt: Date.now(),
+    });
+    await ctx.db.patch(user._id, { activeMealPlanId: id });
+    return id;
+  },
+});
+
 export const create = mutation({
   args: {
-    name: v.string(),
-    mealIds: v.array(v.id("meals")),
+    breakfastMealIds: v.array(v.id("meals")),
+    lunchMealIds: v.array(v.id("meals")),
+    dinnerMealIds: v.array(v.id("meals")),
     setActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
-    // Verify all meals belong to this user
-    for (const mealId of args.mealIds) {
-      const meal = await ctx.db.get(mealId);
-      if (!meal || meal.userId !== user._id) {
-        throw new Error("Invalid meal");
-      }
-    }
+    await validateMealOwnership(ctx, user._id, args.breakfastMealIds);
+    await validateMealOwnership(ctx, user._id, args.lunchMealIds);
+    await validateMealOwnership(ctx, user._id, args.dinnerMealIds);
 
-    // If setting as active, deactivate other plans
-    if (args.setActive) {
-      const activePlans = await ctx.db
-        .query("mealPlans")
-        .withIndex("by_user_active", (q) =>
-          q.eq("userId", user._id).eq("isActive", true)
-        )
-        .collect();
-
-      for (const plan of activePlans) {
-        await ctx.db.patch(plan._id, { isActive: false });
-      }
-    }
-
-    return await ctx.db.insert("mealPlans", {
+    const id = await ctx.db.insert("mealPlans", {
       userId: user._id,
-      name: args.name,
-      mealIds: args.mealIds,
-      isActive: args.setActive ?? false,
+      breakfastMealIds: args.breakfastMealIds,
+      lunchMealIds: args.lunchMealIds,
+      dinnerMealIds: args.dinnerMealIds,
+      cookedMealIds: [],
       createdAt: Date.now(),
     });
+
+    if (args.setActive) {
+      await ctx.db.patch(user._id, { activeMealPlanId: id });
+    }
+
+    return id;
   },
 });
 
-// Update a meal plan
 export const update = mutation({
   args: {
     id: v.id("mealPlans"),
-    name: v.optional(v.string()),
-    mealIds: v.optional(v.array(v.id("meals"))),
+    breakfastMealIds: v.optional(v.array(v.id("meals"))),
+    lunchMealIds: v.optional(v.array(v.id("meals"))),
+    dinnerMealIds: v.optional(v.array(v.id("meals"))),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -172,26 +177,26 @@ export const update = mutation({
       throw new Error("Meal plan not found");
     }
 
-    // Verify all meals belong to this user
-    if (args.mealIds) {
-      for (const mealId of args.mealIds) {
-        const meal = await ctx.db.get(mealId);
-        if (!meal || meal.userId !== user._id) {
-          throw new Error("Invalid meal");
-        }
-      }
-    }
+    const breakfast = args.breakfastMealIds ?? plan.breakfastMealIds;
+    const lunch = args.lunchMealIds ?? plan.lunchMealIds;
+    const dinner = args.dinnerMealIds ?? plan.dinnerMealIds;
 
-    const updates: Record<string, unknown> = {};
-    if (args.name !== undefined) updates.name = args.name;
-    if (args.mealIds !== undefined) updates.mealIds = args.mealIds;
+    await validateMealOwnership(ctx, user._id, breakfast);
+    await validateMealOwnership(ctx, user._id, lunch);
+    await validateMealOwnership(ctx, user._id, dinner);
 
-    await ctx.db.patch(args.id, updates);
+    const cookedMealIds = pruneCookedToPlan(plan, breakfast, lunch, dinner);
+
+    await ctx.db.patch(args.id, {
+      breakfastMealIds: breakfast,
+      lunchMealIds: lunch,
+      dinnerMealIds: dinner,
+      cookedMealIds,
+    });
     return args.id;
   },
 });
 
-// Set a meal plan as active
 export const setActive = mutation({
   args: {
     id: v.id("mealPlans"),
@@ -204,29 +209,13 @@ export const setActive = mutation({
       throw new Error("Meal plan not found");
     }
 
-    // Deactivate other plans
-    const activePlans = await ctx.db
-      .query("mealPlans")
-      .withIndex("by_user_active", (q) =>
-        q.eq("userId", user._id).eq("isActive", true)
-      )
-      .collect();
-
-    for (const activePlan of activePlans) {
-      await ctx.db.patch(activePlan._id, { isActive: false });
-    }
-
-    // Activate this plan
-    await ctx.db.patch(args.id, { isActive: true });
+    await ctx.db.patch(user._id, { activeMealPlanId: args.id });
     return args.id;
   },
 });
 
-// Deactivate a meal plan
 export const deactivate = mutation({
-  args: {
-    id: v.id("mealPlans"),
-  },
+  args: { id: v.id("mealPlans") },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const plan = await ctx.db.get(args.id);
@@ -235,12 +224,13 @@ export const deactivate = mutation({
       throw new Error("Meal plan not found");
     }
 
-    await ctx.db.patch(args.id, { isActive: false });
+    if (user.activeMealPlanId === args.id) {
+      await ctx.db.patch(user._id, { activeMealPlanId: undefined });
+    }
     return args.id;
   },
 });
 
-// Delete a meal plan
 export const remove = mutation({
   args: { id: v.id("mealPlans") },
   handler: async (ctx, args) => {
@@ -249,6 +239,10 @@ export const remove = mutation({
 
     if (!plan || plan.userId !== user._id) {
       throw new Error("Meal plan not found");
+    }
+
+    if (user.activeMealPlanId === args.id) {
+      await ctx.db.patch(user._id, { activeMealPlanId: undefined });
     }
 
     await ctx.db.delete(args.id);

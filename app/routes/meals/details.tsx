@@ -5,12 +5,19 @@ import { api } from "convex/_generated/api";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from "~/components/ui/tooltip";
-import { Pencil, Trash2, Timer } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Timer, Clock } from "lucide-react";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
+import { CookButton } from "./components/cook-button";
 
 const FRACTION_MAP: [number, string][] = [
   [0.125, "⅛"], [0.25, "¼"], [0.333, "⅓"], [0.375, "⅜"],
@@ -20,20 +27,23 @@ const FRACTION_MAP: [number, string][] = [
 function formatAmount(amount: number | undefined): string {
   if (amount === undefined || amount === null) return "";
   if (Number.isInteger(amount)) return String(amount);
-
   const whole = Math.floor(amount);
   const frac = amount - whole;
-
   const closest = FRACTION_MAP.reduce((best, [val, sym]) =>
     Math.abs(frac - val) < Math.abs(frac - best[0]) ? [val, sym] : best
   );
-
   if (Math.abs(frac - (closest[0] as number)) < 0.05) {
     return whole > 0 ? `${whole}${closest[1]}` : (closest[1] as string);
   }
-
-  // Fall back to a clean decimal if no fraction is close enough
   return String(parseFloat(amount.toFixed(2)));
+}
+
+function formatDuration(seconds: number): string {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.round((seconds % 3600) / 60);
+  if (hrs > 0 && mins > 0) return `${hrs}h ${mins}m`;
+  if (hrs > 0) return `${hrs}h`;
+  return `${mins} min`;
 }
 
 export function meta() {
@@ -95,32 +105,66 @@ export default function MealDetailsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="mb-8">
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-8 md:py-8">
+      <div className="mb-6 md:mb-8">
         <Link
           to="/meals"
-          className="text-mauve hover:text-plum transition-colors text-sm mb-2 inline-block"
+          className="md:hidden text-mauve hover:text-plum transition-colors text-sm mb-3 inline-flex items-center gap-1"
         >
-          ← Back to meals
+          ← Meals
         </Link>
 
-        <div className="flex items-start justify-between">
-          <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/meals/${mealId}/edit`}>
-                <Pencil className="w-4 h-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
+
+            {meal.description && (
+              <p className="text-mauve mt-2">{meal.description}</p>
+            )}
+
+            {(meal.prepTime || meal.cookTime) && (
+              <div className="flex items-center gap-4 mt-3">
+                {meal.prepTime && (
+                  <span className="inline-flex items-center gap-1.5 text-sm text-mauve">
+                    <Clock className="size-4" />
+                    Prep: {formatDuration(meal.prepTime)}
+                  </span>
+                )}
+                {meal.cookTime && (
+                  <span className="inline-flex items-center gap-1.5 text-sm text-mauve">
+                    <Timer className="size-4" />
+                    Cook: {formatDuration(meal.cookTime)}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 ml-4">
+            {meal.steps.length > 0 && (
+              <CookButton mealId={mealId} />
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="px-2">
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate(`/meals/${mealId}/edit`)}>
+                  <Pencil className="size-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="size-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

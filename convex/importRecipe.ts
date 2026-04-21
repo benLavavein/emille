@@ -57,6 +57,17 @@ function decodeHtmlEntities(s: string): string {
   return result;
 }
 
+function parseIsoDuration(iso: string | undefined): number | undefined {
+  if (!iso) return undefined;
+  const m = iso.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+  if (!m) return undefined;
+  const hours = parseInt(m[1] || "0");
+  const mins = parseInt(m[2] || "0");
+  const secs = parseInt(m[3] || "0");
+  const total = hours * 3600 + mins * 60 + secs;
+  return total > 0 ? total : undefined;
+}
+
 function parseFraction(s: string): number | null {
   // Unicode fractions
   const unicodeFractions: Record<string, number> = {
@@ -231,7 +242,7 @@ function findRecipe(data: unknown): Record<string, unknown> | null {
 
 export const importFromUrl = action({
   args: { url: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     const res = await fetch(args.url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; EmilleBot/1.0)" },
     });
@@ -257,6 +268,11 @@ export const importFromUrl = action({
     if (!recipe) throw new Error("No recipe data found on that page.");
 
     const name = decodeHtmlEntities((recipe.name as string) || "Imported Recipe");
+    const description = recipe.description
+      ? decodeHtmlEntities(String(recipe.description)).trim()
+      : undefined;
+    const prepTime = parseIsoDuration(recipe.prepTime as string | undefined);
+    const cookTime = parseIsoDuration(recipe.cookTime as string | undefined);
 
     const rawIngredients = (recipe.recipeIngredient as string[]) || [];
     const ingredients = rawIngredients.map((raw) => {
@@ -273,6 +289,9 @@ export const importFromUrl = action({
 
     const mealId = await ctx.runMutation(api.meals.create, {
       name,
+      description,
+      prepTime,
+      cookTime,
       mealTimes: ["dinner"],
       tagIds: [],
       ingredients,

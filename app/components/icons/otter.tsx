@@ -28,10 +28,10 @@ export function OtterIcon(props: React.SVGProps<SVGSVGElement>) {
         <path d="M29.7529297,59.6416016c-1.4516602-1.3496094-3.8813477-2.1088867-7.2895508-2.2773438c-4.5893555-0.2363281-7.9130859-1.5185547-9.9716797-3.847168 M75.6640625,58.8823242c0.4384766-7.0854492,4.015625-14.222168,10.730957-21.4082031 M61.0854492,57.0600586c-1.012207-6.5117188,0.1015625-13.0576172,3.3413086-19.637207 M27.6772461,63.1333008c18.0541992-4.284668,35.9223633-4.284668,53.6054688,0 M41.3950195,57.6674805c-0.1689453-6.2416992-2.3789063-12.2138672-6.6313477-17.9160156" />
       </g>
 
-      <ellipse cx="48.66" cy="29.73" rx="1.94" ry="1.33" transform="translate(11.36 60.66) rotate(-86.92)">
+      <ellipse cx="48.66" cy="29.73" rx="1.94" ry="1.33" fill="#333" stroke="#333" transform="translate(11.36 60.66) rotate(-86.92)">
         <animate attributeName="rx" values="1.94;1.94;0.1;1.94;1.94" keyTimes="0;0.92;0.95;0.98;1" dur="4s" repeatCount="indefinite" />
       </ellipse>
-      <ellipse cx="31.88" cy="29.73" rx="1.33" ry="1.94" transform="translate(-8.64 -11.6) rotate(-7.57)">
+      <ellipse cx="31.88" cy="29.73" rx="1.33" ry="1.94" fill="#333" stroke="#333" transform="translate(-8.64 -11.6) rotate(-7.57)">
         <animate attributeName="ry" values="1.94;1.94;0.1;1.94;1.94" keyTimes="0;0.92;0.95;0.98;1" dur="4s" repeatCount="indefinite" />
       </ellipse>
     </svg>

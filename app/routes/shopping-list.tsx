@@ -254,10 +254,10 @@ export default function ShoppingListPage() {
             Add items manually or from a meal plan
           </p>
           <Link
-            to="/meal-plans"
+            to="/meal-plan"
             className="text-plum hover:underline font-medium"
           >
-            Go to meal plans
+            Go to meal plan
           </Link>
         </div>
       ) : (
