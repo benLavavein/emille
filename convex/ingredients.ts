@@ -21,13 +21,19 @@ export const list = query({
 
     const ingredientsWithDetails = await Promise.all(
       ingredients.map(async (ing) => {
-        const store = ing.storeId ? await ctx.db.get(ing.storeId) : null;
+        const primaryStoreId = ing.storeLocations?.[0]?.storeId;
+        const storeDoc = primaryStoreId
+          ? await ctx.db.get(primaryStoreId)
+          : null;
         const usedInCount = meals.filter((meal) =>
           meal.ingredients.some((mi) => mi.ingredientId === ing._id)
         ).length;
         return {
           ...ing,
-          store: store ? { _id: store._id, name: store.name } : null,
+          store:
+            storeDoc && "name" in storeDoc
+              ? { _id: storeDoc._id, name: storeDoc.name }
+              : null,
           usedInCount,
         };
       })
@@ -87,8 +93,15 @@ export const create = mutation({
     return await ctx.db.insert("ingredients", {
       userId: user._id,
       name: args.name,
-      storeId: args.storeId,
-      storeSectionName: args.storeSectionName,
+      storeLocations:
+        args.storeId !== undefined
+          ? [
+              {
+                storeId: args.storeId,
+                sectionName: args.storeSectionName ?? "",
+              },
+            ]
+          : undefined,
       defaultQuantityType: args.defaultQuantityType,
       notes: args.notes,
       createdAt: Date.now(),
@@ -125,8 +138,27 @@ export const update = mutation({
     const updates: Record<string, unknown> = {};
 
     if (args.name !== undefined) updates.name = args.name;
-    if (args.storeId !== undefined) updates.storeId = args.storeId;
-    if (args.storeSectionName !== undefined) updates.storeSectionName = args.storeSectionName;
+    if (args.storeId !== undefined || args.storeSectionName !== undefined) {
+      if (args.storeId !== undefined) {
+        updates.storeLocations = [
+          {
+            storeId: args.storeId,
+            sectionName:
+              args.storeSectionName ??
+              ingredient.storeLocations?.[0]?.sectionName ??
+              "",
+          },
+        ];
+      } else if (args.storeSectionName !== undefined) {
+        const locs = ingredient.storeLocations;
+        if (locs?.length) {
+          updates.storeLocations = [
+            { ...locs[0], sectionName: args.storeSectionName },
+            ...locs.slice(1),
+          ];
+        }
+      }
+    }
     if (args.defaultQuantityType !== undefined) updates.defaultQuantityType = args.defaultQuantityType;
     if (args.notes !== undefined) updates.notes = args.notes;
 

@@ -9,8 +9,11 @@ export default [
     index("routes/meals/index.tsx"),
     route(":id", "routes/meals/details.tsx"),
   ]),
-  route("ingredients", "routes/ingredients/index.tsx"),
   route("ingredients/new", "routes/ingredients/new.tsx"),
+  route("ingredients", "routes/ingredients/layout.tsx", [
+    index("routes/ingredients/index.tsx"),
+    route(":id", "routes/ingredients/detail.tsx"),
+  ]),
   route("stores", "routes/stores/index.tsx"),
   route("stores/new", "routes/stores/new.tsx"),
   route("stores/:id", "routes/stores/details.tsx"),
