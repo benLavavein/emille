@@ -20,8 +20,15 @@ import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 import { CookButton } from "./components/cook-button";
 
 const FRACTION_MAP: [number, string][] = [
-  [0.125, "⅛"], [0.25, "¼"], [0.333, "⅓"], [0.375, "⅜"],
-  [0.5, "½"], [0.625, "⅝"], [0.667, "⅔"], [0.75, "¾"], [0.875, "⅞"],
+  [0.125, "⅛"],
+  [0.25, "¼"],
+  [0.333, "⅓"],
+  [0.375, "⅜"],
+  [0.5, "½"],
+  [0.625, "⅝"],
+  [0.667, "⅔"],
+  [0.75, "¾"],
+  [0.875, "⅞"],
 ];
 
 function formatAmount(amount: number | undefined): string {
@@ -30,7 +37,7 @@ function formatAmount(amount: number | undefined): string {
   const whole = Math.floor(amount);
   const frac = amount - whole;
   const closest = FRACTION_MAP.reduce((best, [val, sym]) =>
-    Math.abs(frac - val) < Math.abs(frac - best[0]) ? [val, sym] : best
+    Math.abs(frac - val) < Math.abs(frac - best[0]) ? [val, sym] : best,
   );
   if (Math.abs(frac - (closest[0] as number)) < 0.05) {
     return whole > 0 ? `${whole}${closest[1]}` : (closest[1] as string);
@@ -107,43 +114,11 @@ export default function MealDetailsPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 md:px-8 md:py-8">
       <div className="mb-6 md:mb-8">
-        <Link
-          to="/meals"
-          className="md:hidden text-mauve hover:text-plum transition-colors text-sm mb-3 inline-flex items-center gap-1"
-        >
-          ← Meals
-        </Link>
-
         <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
-
-            {meal.description && (
-              <p className="text-mauve mt-2">{meal.description}</p>
-            )}
-
-            {(meal.prepTime || meal.cookTime) && (
-              <div className="flex items-center gap-4 mt-3">
-                {meal.prepTime && (
-                  <span className="inline-flex items-center gap-1.5 text-sm text-mauve">
-                    <Clock className="size-4" />
-                    Prep: {formatDuration(meal.prepTime)}
-                  </span>
-                )}
-                {meal.cookTime && (
-                  <span className="inline-flex items-center gap-1.5 text-sm text-mauve">
-                    <Timer className="size-4" />
-                    Cook: {formatDuration(meal.cookTime)}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
 
           <div className="flex items-center gap-2 shrink-0 ml-4">
-            {meal.steps.length > 0 && (
-              <CookButton mealId={mealId} />
-            )}
+            {meal.steps.length > 0 && <CookButton mealId={mealId} />}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -152,7 +127,9 @@ export default function MealDetailsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate(`/meals/${mealId}/edit`)}>
+                <DropdownMenuItem
+                  onClick={() => navigate(`/meals/${mealId}/edit`)}
+                >
                   <Pencil className="size-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
@@ -168,13 +145,33 @@ export default function MealDetailsPage() {
           </div>
         </div>
 
+        {meal.description && (
+          <p className="text-mauve mt-2">{meal.description}</p>
+        )}
+
+        {(meal.prepTime || meal.cookTime) && (
+          <div className="flex items-center gap-4 mt-3">
+            {meal.prepTime && (
+              <span className="inline-flex items-center gap-1.5 text-sm text-mauve">
+                <Clock className="size-4" />
+                Prep: {formatDuration(meal.prepTime)}
+              </span>
+            )}
+            {meal.cookTime && (
+              <span className="inline-flex items-center gap-1.5 text-sm text-mauve">
+                <Timer className="size-4" />
+                Cook: {formatDuration(meal.cookTime)}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Meal Times Icons */}
         <div className="flex items-end gap-2 mt-4">
           {MEAL_TIMES.map((time, index) => {
             const Icon = MEAL_TIME_ICONS[time];
             const isActive = meal.mealTimes?.includes(time);
-            const arcOffset =
-              index === 1 ? "-translate-y-2" : "translate-y-0";
+            const arcOffset = index === 1 ? "-translate-y-2" : "translate-y-0";
             return (
               <Tooltip key={time}>
                 <TooltipTrigger asChild>
@@ -231,11 +228,13 @@ export default function MealDetailsPage() {
         {/* Ingredients Section */}
         <div>
           <h2 className="text-lg font-semibold text-plum mb-3">Ingredients</h2>
-          <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50 divide-y divide-blush/30">
+          <div className="bg-white/60 backdrop-blur-sm rounded-md border border-blush/50 divide-y divide-blush/30">
             {meal.ingredientsWithDetails.map((ing: any, index: number) => (
               <div key={index} className="flex items-center gap-3 p-4">
                 <span className="text-mauve min-w-20">
-                  {[formatAmount(ing.amount), ing.unit].filter(Boolean).join(" ") || "—"}
+                  {[formatAmount(ing.amount), ing.unit]
+                    .filter(Boolean)
+                    .join(" ") || "—"}
                 </span>
                 <span className="font-medium text-plum">
                   {ing.name || ing.ingredient?.name || "Unknown ingredient"}

@@ -57,7 +57,7 @@ function FeatureCard({
 
 function HomeDashboard() {
   return (
-    <>
+    <div className="flex flex-col gap-6">
       <CookingCard />
 
       <div className="mb-8">
@@ -163,7 +163,7 @@ function HomeDashboard() {
           </li>
         </ul>
       </div>
-    </>
+    </div>
   );
 }
 

@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useUser, useClerk } from "@clerk/react-router";
-import { Menu, Home, UtensilsCrossed, Tag, Store, Calendar, ShoppingCart, LogOut } from "lucide-react";
+import {
+  Menu,
+  Home,
+  UtensilsCrossed,
+  Tag,
+  Store,
+  Calendar,
+  ShoppingCart,
+  LogOut,
+} from "lucide-react";
 import { OtterIcon } from "~/components/icons/otter";
 import {
   Sheet,
@@ -28,14 +37,19 @@ function MobileHeader() {
   const firstName = user?.firstName || user?.username || "User";
 
   return (
-    <header className="md:hidden bg-plum text-white px-4 h-12 flex items-center sticky top-0 z-40">
+    <header className="md:hidden bg-plum text-white px-4 h-15 flex items-center sticky top-0 z-40">
+      <span className="flex-1 text-center text-xl font-bold">Emille</span>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <button className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <Menu className="size-6" />
           </button>
         </SheetTrigger>
-        <SheetContent side="left" showCloseButton className="!w-full !max-w-full p-0">
+        <SheetContent
+          side="right"
+          showCloseButton
+          className="w-full! max-w-full! p-0"
+        >
           <VisuallyHidden.Root>
             <SheetTitle>Navigation</SheetTitle>
           </VisuallyHidden.Root>
@@ -80,8 +94,6 @@ function MobileHeader() {
           </div>
         </SheetContent>
       </Sheet>
-      <span className="flex-1 text-center text-xl font-bold">Emille</span>
-      <div className="w-9" />
     </header>
   );
 }

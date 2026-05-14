@@ -63,7 +63,7 @@ export function CookingCard() {
       className={`h-44 rounded-2xl border-2 bg-white/80 backdrop-blur-sm flex items-center px-6 gap-3`}
     >
       <div className="overflow-visible shrink-0">
-        <CookingPotIcon active={isCooking} className="w-24 h-24 text-plum" />
+        <CookingPotIcon active={isCooking} className="size-32 mb-6 text-plum" />
       </div>
 
       {isCooking && mealForFade ? (
@@ -95,20 +95,9 @@ export function CookingCard() {
           </div>
         </Link>
       ) : (
-        <span className="text-mauve text-sm">
+        <span className="text-mauve text-sm grow text-center">
           The kitchen is quiet.. Too quiet.
         </span>
-      )}
-
-      {isCooking && (
-        <Button
-          type="button"
-          variant="outline"
-          className="size-29 rounded-xl p-2 text-sm font-medium text-plum border-peach/60 whitespace-normal leading-snug hover:bg-gray-50 hover:text-plum"
-          onClick={() => clearCooking()}
-        >
-          I&apos;m finished!
-        </Button>
       )}
     </div>
   );
