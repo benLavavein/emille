@@ -111,9 +111,9 @@ function AuthScreen() {
           {mode === "signin" ? "Sign in to manage your meals" : "Create your account"}
         </p>
         {mode === "signin" ? (
-          <SignIn appearance={clerkAppearance} />
+          <SignIn routing="hash" appearance={clerkAppearance} />
         ) : (
-          <SignUp appearance={clerkAppearance} />
+          <SignUp routing="hash" appearance={clerkAppearance} />
         )}
         <p className="text-sm text-mauve mt-2">
           {mode === "signin" ? (

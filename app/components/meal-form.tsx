@@ -93,39 +93,43 @@ export function MealForm({
   const createTag = useMutation(api.tags.create);
 
   const [name, setName] = useState(initialData?.name ?? "");
-  const [description, setDescription] = useState(initialData?.description ?? "");
+  const [description, setDescription] = useState(
+    initialData?.description ?? "",
+  );
   const [prepTimeMin, setPrepTimeMin] = useState(
-    initialData?.prepTime ? String(Math.round(initialData.prepTime / 60)) : ""
+    initialData?.prepTime ? String(Math.round(initialData.prepTime / 60)) : "",
   );
   const [cookTimeMin, setCookTimeMin] = useState(
-    initialData?.cookTime ? String(Math.round(initialData.cookTime / 60)) : ""
+    initialData?.cookTime ? String(Math.round(initialData.cookTime / 60)) : "",
   );
   const [mealTimes, setMealTimes] = useState<string[]>(
-    initialData?.mealTimes ?? []
+    initialData?.mealTimes ?? [],
   );
   const [mealIngredients, setMealIngredients] = useState<MealIngredient[]>(
-    initialData?.ingredients ?? []
+    initialData?.ingredients ?? [],
   );
-  const [mealTags, setMealTags] = useState<MealTag[]>(
-    initialData?.tags ?? []
-  );
-  const nextStepId = useRef(
-    (initialData?.steps?.length ?? 0) + 1
-  );
-  const [steps, setSteps] = useState<{ id: number; text: string; timerMinutes: string }[]>(
-    () => (initialData?.steps ?? []).map((s, i) => ({
+  const [mealTags, setMealTags] = useState<MealTag[]>(initialData?.tags ?? []);
+  const nextStepId = useRef((initialData?.steps?.length ?? 0) + 1);
+  const [steps, setSteps] = useState<
+    { id: number; text: string; timerMinutes: string }[]
+  >(() =>
+    (initialData?.steps ?? []).map((s, i) => ({
       id: i + 1,
       text: s.text,
       timerMinutes: s.timerSeconds ? String(s.timerSeconds / 60) : "",
-    }))
+    })),
   );
   const [newStep, setNewStep] = useState("");
   const [isReordering, setIsReordering] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-
   const ingredientItems: ComboboxItem[] = (existingIngredients || [])
-    .filter((ing) => !mealIngredients.some((mi) => mi.ingredientId === ing._id || mi.name === ing.name))
+    .filter(
+      (ing) =>
+        !mealIngredients.some(
+          (mi) => mi.ingredientId === ing._id || mi.name === ing.name,
+        ),
+    )
     .map((ing) => ({ id: ing._id, label: ing.name }));
 
   const tagItems: ComboboxItem[] = (existingTags || [])
@@ -134,7 +138,7 @@ export function MealForm({
 
   const toggleMealTime = (time: string) => {
     setMealTimes((prev) =>
-      prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time]
+      prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time],
     );
   };
 
@@ -145,15 +149,12 @@ export function MealForm({
     ]);
   };
 
-  const handleCreateIngredient = useCallback(
-    (ingredientName: string) => {
-      setMealIngredients((prev) => [
-        ...prev,
-        { name: ingredientName, amount: 1, unit: "" },
-      ]);
-    },
-    []
-  );
+  const handleCreateIngredient = useCallback((ingredientName: string) => {
+    setMealIngredients((prev) => [
+      ...prev,
+      { name: ingredientName, amount: 1, unit: "" },
+    ]);
+  }, []);
 
   const handleSelectTag = (item: ComboboxItem) => {
     setMealTags((prev) => [...prev, { id: item.id, name: item.label }]);
@@ -164,18 +165,21 @@ export function MealForm({
       const id = await createTag({ name: tagName });
       setMealTags((prev) => [...prev, { id, name: tagName }]);
     },
-    [createTag]
+    [createTag],
   );
 
-  const updateIngredientAmount = (index: number, amount: number | undefined) => {
+  const updateIngredientAmount = (
+    index: number,
+    amount: number | undefined,
+  ) => {
     setMealIngredients((prev) =>
-      prev.map((ing, i) => (i === index ? { ...ing, amount } : ing))
+      prev.map((ing, i) => (i === index ? { ...ing, amount } : ing)),
     );
   };
 
   const updateIngredientUnit = (index: number, unit: string) => {
     setMealIngredients((prev) =>
-      prev.map((ing, i) => (i === index ? { ...ing, unit } : ing))
+      prev.map((ing, i) => (i === index ? { ...ing, unit } : ing)),
     );
   };
 
@@ -190,19 +194,22 @@ export function MealForm({
   const addStep = () => {
     if (!newStep.trim()) return;
     const id = nextStepId.current++;
-    setSteps((prev) => [...prev, { id, text: newStep.trim(), timerMinutes: "" }]);
+    setSteps((prev) => [
+      ...prev,
+      { id, text: newStep.trim(), timerMinutes: "" },
+    ]);
     setNewStep("");
   };
 
   const updateStep = (index: number, text: string) => {
     setSteps((prev) =>
-      prev.map((step, i) => (i === index ? { ...step, text } : step))
+      prev.map((step, i) => (i === index ? { ...step, text } : step)),
     );
   };
 
   const updateStepTimer = (index: number, timerMinutes: string) => {
     setSteps((prev) =>
-      prev.map((step, i) => (i === index ? { ...step, timerMinutes } : step))
+      prev.map((step, i) => (i === index ? { ...step, timerMinutes } : step)),
     );
   };
 
@@ -225,8 +232,14 @@ export function MealForm({
 
     setIsSubmitting(true);
     try {
-      const prepSecs = parseFloat(prepTimeMin) > 0 ? Math.round(parseFloat(prepTimeMin) * 60) : undefined;
-      const cookSecs = parseFloat(cookTimeMin) > 0 ? Math.round(parseFloat(cookTimeMin) * 60) : undefined;
+      const prepSecs =
+        parseFloat(prepTimeMin) > 0
+          ? Math.round(parseFloat(prepTimeMin) * 60)
+          : undefined;
+      const cookSecs =
+        parseFloat(cookTimeMin) > 0
+          ? Math.round(parseFloat(cookTimeMin) * 60)
+          : undefined;
       await onSubmit({
         name: name.trim(),
         description: description.trim() || undefined,
@@ -257,16 +270,7 @@ export function MealForm({
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col min-h-[calc(100vh-6rem)]">
-      <div className="mb-8">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-mauve hover:text-plum transition-colors text-sm mb-2 inline-block"
-        >
-          ← {backLabel}
-        </button>
-        <h1 className="text-3xl font-bold text-plum">{title}</h1>
-      </div>
+      <h1 className="text-3xl font-bold text-plum mb-8">{title}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-8 flex-1 flex flex-col">
         {/* Meal Name */}
@@ -309,7 +313,10 @@ export function MealForm({
         {/* Prep & Cook Time */}
         <div className="flex gap-4">
           <div className="flex-1">
-            <label htmlFor="prepTime" className="block text-sm font-medium text-plum mb-2">
+            <label
+              htmlFor="prepTime"
+              className="block text-sm font-medium text-plum mb-2"
+            >
               Prep Time (min)
             </label>
             <input
@@ -323,7 +330,10 @@ export function MealForm({
             />
           </div>
           <div className="flex-1">
-            <label htmlFor="cookTime" className="block text-sm font-medium text-plum mb-2">
+            <label
+              htmlFor="cookTime"
+              className="block text-sm font-medium text-plum mb-2"
+            >
               Cook Time (min)
             </label>
             <input
@@ -483,7 +493,11 @@ export function MealForm({
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 35,
+                      }}
                       className="flex items-center gap-2 py-2.5 group"
                     >
                       {isReordering && (
@@ -522,7 +536,9 @@ export function MealForm({
                         <input
                           type="number"
                           value={step.timerMinutes}
-                          onChange={(e) => updateStepTimer(index, e.target.value)}
+                          onChange={(e) =>
+                            updateStepTimer(index, e.target.value)
+                          }
                           placeholder="min"
                           min="0"
                           step="0.5"
@@ -557,7 +573,12 @@ export function MealForm({
                 placeholder="Add a step..."
                 className="flex-1 px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground resize-none overflow-hidden"
               />
-              <Button type="button" variant="secondary" onClick={addStep} className="mt-0.5">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={addStep}
+                className="mt-0.5"
+              >
                 Add
               </Button>
             </div>
@@ -572,11 +593,7 @@ export function MealForm({
           <Button
             type="submit"
             className="flex-1"
-            disabled={
-              isSubmitting ||
-              !name.trim() ||
-              mealTimes.length === 0
-            }
+            disabled={isSubmitting || !name.trim() || mealTimes.length === 0}
           >
             {isSubmitting ? submittingLabel : submitLabel}
           </Button>
