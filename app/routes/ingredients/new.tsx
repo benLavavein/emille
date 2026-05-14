@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { useSetBackUrl } from "~/lib/back-button";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
@@ -11,6 +12,7 @@ export function meta() {
 }
 
 export default function NewIngredientPage() {
+  useSetBackUrl("/ingredients");
   const navigate = useNavigate();
   const stores = useQuery(api.groceryStores.list);
   const createIngredient = useMutation(api.ingredients.create);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useSetBackUrl } from "~/lib/back-button";
 import { useAction, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { MealForm, type MealFormData } from "~/components/meal-form";
@@ -89,6 +90,7 @@ function ImportFromUrl({ onCancel }: { onCancel: () => void }) {
 }
 
 export default function AddMealPage() {
+  useSetBackUrl("/meals");
   const navigate = useNavigate();
   const createMeal = useMutation(api.meals.create);
   const [mode, setMode] = useState<"manual" | "import">("manual");

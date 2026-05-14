@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router";
+import { useSetBackUrl } from "~/lib/back-button";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
@@ -12,6 +13,7 @@ export function meta() {
 }
 
 export default function IngredientDetailPage() {
+  useSetBackUrl("/ingredients");
   const { id } = useParams();
   const ingredients = useQuery(api.ingredients.list);
 

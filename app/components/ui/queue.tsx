@@ -1,7 +1,9 @@
 import * as React from "react";
 import { Link, NavLink } from "react-router";
-import { ChevronLeft, Plus, Search } from "lucide-react";
+import { ChevronLeft, Filter, Plus, Search } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { Button } from "./button";
+import { Separator } from "./separator";
 
 /** Column shell: header stays in document flow; only {@link QueueBody} scrolls. */
 export const Queue = ({ className, ...props }: React.ComponentProps<"div">) => (
@@ -27,8 +29,7 @@ export type QueueHeaderProps = {
   /** If set, renders the add action linking here (e.g. `/meals/add`). */
   addTo?: string;
   addLabel?: string;
-  /** Omit to hide the search row. */
-  search?: QueueSearchProps;
+  search: QueueSearchProps;
 };
 
 function QueueHeaderSearch({
@@ -37,7 +38,7 @@ function QueueHeaderSearch({
   placeholder = "Search…",
 }: QueueSearchProps) {
   return (
-    <div className="relative mt-3 w-full">
+    <div className="relative w-full">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mauve/50" />
       <input
         type="text"
@@ -52,24 +53,15 @@ function QueueHeaderSearch({
 
 export function QueueHeader({
   title,
-  mobileBackUrl,
   addTo,
   addLabel = "Add",
   search,
 }: QueueHeaderProps) {
   return (
-    <header className="shrink-0 border-b border-blush/40 bg-white/80 px-3 pt-3 pb-2 backdrop-blur-md md:px-4 md:pt-4">
-      <div className="flex items-center justify-between gap-2">
+    <header className="shrink-0 border-b border-blush/40 bg-white/80 pt-3 pb-2 backdrop-blur-md md:px-4 md:pt-4 flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2 px-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          {mobileBackUrl ? (
-            <Link
-              to={mobileBackUrl}
-              className="shrink-0 rounded-lg p-1.5 -ml-1 text-mauve transition-colors hover:bg-blush/20 hover:text-plum md:hidden"
-            >
-              <ChevronLeft className="size-6" />
-            </Link>
-          ) : null}
-          <h1 className="truncate text-lg font-bold text-plum">{title}</h1>
+          <h1 className="truncate text-lg font-bold text-plum px-3">{title}</h1>
         </div>
         {addTo ? (
           <Link
@@ -81,13 +73,17 @@ export function QueueHeader({
           </Link>
         ) : null}
       </div>
-      {search ? (
+      <Separator />
+      <div className="flex gap-2 items-center px-2">
         <QueueHeaderSearch
           value={search.value}
           onChange={search.onChange}
           placeholder={search.placeholder}
         />
-      ) : null}
+        <Button variant="ghost" size="icon">
+          <Filter className="size-4 text-plum" />
+        </Button>
+      </div>
     </header>
   );
 }
@@ -115,7 +111,7 @@ export const QueueBody = ({
 }: React.ComponentProps<"div">) => (
   <div
     className={cn(
-      "flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-width:thin]",
+      "flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-width:thin] bg-white/80",
       className,
     )}
     {...props}
@@ -129,10 +125,8 @@ export function queueRowClassName(options: {
 }) {
   const { active, className } = options;
   return cn(
-    "flex w-full items-center gap-2 py-2.5 pl-3.5 pr-3.5 text-left text-sm transition-colors",
-    active
-      ? "bg-plum/12 font-medium text-plum"
-      : "text-plum hover:bg-blush/30",
+    "flex w-full items-center gap-2 py-2.5 h-12.5 pl-3.5 pr-3.5 text-left text-sm transition-colors",
+    active ? "bg-plum/12 font-medium text-plum" : "text-plum hover:bg-blush/30",
     className,
   );
 }
@@ -206,11 +200,7 @@ export function QueueItems<T>({
   const loading = renderLoading ?? defaultLoading;
 
   if (listDataState.status === "loading") {
-    return (
-      <div className="min-h-0 flex-1">
-        {loading()}
-      </div>
-    );
+    return <div className="min-h-0 flex-1">{loading()}</div>;
   }
 
   if (listDataState.status === "empty") {

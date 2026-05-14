@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router";
+import { useSetBackUrl } from "~/lib/back-button";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { X, Timer, Play, Square, CheckCircle2, Carrot, ListOrdered } from "lucide-react";
@@ -267,6 +268,7 @@ export function meta() {
 export default function CookPage() {
   useWakeLock();
   const params = useParams();
+  useSetBackUrl(`/meals/${params.id}`);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mealId = params.id as string;

@@ -58,9 +58,7 @@ export function MealsQueue() {
     const q = searchQuery.toLowerCase();
     return meals.filter((meal) => {
       if (meal.name.toLowerCase().includes(q)) return true;
-      if (
-        meal.tags?.some((tag) => tag && tag.name.toLowerCase().includes(q))
-      )
+      if (meal.tags?.some((tag) => tag && tag.name.toLowerCase().includes(q)))
         return true;
       return false;
     });
@@ -72,7 +70,6 @@ export function MealsQueue() {
     <Queue>
       <QueueHeader
         title="Meals"
-        mobileBackUrl="/"
         addTo="/meals/add"
         addLabel="Add meal"
         search={{

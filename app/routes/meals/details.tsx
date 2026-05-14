@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { useSetBackUrl } from "~/lib/back-button";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Badge } from "~/components/ui/badge";
@@ -61,6 +62,7 @@ export function meta() {
 }
 
 export default function MealDetailsPage() {
+  useSetBackUrl("/meals");
   const params = useParams();
   const navigate = useNavigate();
   const mealId = params.id as string;

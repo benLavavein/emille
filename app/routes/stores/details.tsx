@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { useSetBackUrl } from "~/lib/back-button";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "~/components/ui/button";
@@ -19,6 +20,7 @@ export function meta() {
 }
 
 export default function StoreDetailsPage() {
+  useSetBackUrl("/stores");
   const params = useParams();
   const navigate = useNavigate();
   const storeId = params.id as string;

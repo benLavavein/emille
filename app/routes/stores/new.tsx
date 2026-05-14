@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { useSetBackUrl } from "~/lib/back-button";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
@@ -16,6 +17,7 @@ type Section = {
 };
 
 export default function NewStorePage() {
+  useSetBackUrl("/stores");
   const navigate = useNavigate();
   const createStore = useMutation(api.groceryStores.create);
 

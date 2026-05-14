@@ -10,8 +10,10 @@ import {
   Calendar,
   ShoppingCart,
   LogOut,
+  ChevronLeft,
 } from "lucide-react";
 import { OtterIcon } from "~/components/icons/otter";
+import { useBackButton } from "~/lib/back-button";
 import {
   Sheet,
   SheetTrigger,
@@ -35,13 +37,28 @@ function MobileHeader() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const firstName = user?.firstName || user?.username || "User";
+  const { backUrl } = useBackButton();
+
+  const effectiveBackUrl = backUrl ?? "/";
 
   return (
     <header className="md:hidden bg-plum text-white px-4 h-15 flex items-center sticky top-0 z-40">
-      <span className="flex-1 text-center text-xl font-bold">Emille</span>
+      <div className="w-10 flex items-center">
+        {location.pathname !== "/" && (
+          <Link
+            to={effectiveBackUrl}
+            className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <ChevronLeft className="size-6" />
+          </Link>
+        )}
+      </div>
+      <Link to="/" className="flex-1 text-center text-2xl font-bold">
+        Emille
+      </Link>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <button className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/10 transition-colors">
+          <button className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <Menu className="size-6" />
           </button>
         </SheetTrigger>

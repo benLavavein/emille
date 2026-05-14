@@ -16,6 +16,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Authenticated, ConvexReactClient, Unauthenticated, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { AppHeader, DesktopSidebar } from "./components/app-header";
+import { BackButtonProvider } from "./lib/back-button";
 import { OtterIcon } from "./components/icons/otter";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -147,17 +148,19 @@ export default function App({ loaderData }: Route.ComponentProps) {
           </Unauthenticated>
           <Authenticated>
             <UserSync />
-            <div className="flex h-screen min-h-0 flex-col overflow-hidden">
-              <div className="shrink-0">
-                <AppHeader />
-              </div>
-              <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
-                <DesktopSidebar />
-                <div className="min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
-                  <Outlet />
+            <BackButtonProvider>
+              <div className="flex h-screen min-h-0 flex-col overflow-hidden">
+                <div className="shrink-0">
+                  <AppHeader />
+                </div>
+                <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
+                  <DesktopSidebar />
+                  <div className="min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+                    <Outlet />
+                  </div>
                 </div>
               </div>
-            </div>
+            </BackButtonProvider>
           </Authenticated>
         </main>
       </ConvexProviderWithClerk>
