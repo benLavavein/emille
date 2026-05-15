@@ -51,11 +51,11 @@ export function Combobox({
     : isFocused;
 
   const filteredItems = items.filter((item) =>
-    item.label.toLowerCase().includes(inputValue.toLowerCase())
+    item.label.toLowerCase().includes(inputValue.toLowerCase()),
   );
 
   const exactMatch = items.find(
-    (item) => item.label.toLowerCase() === inputValue.trim().toLowerCase()
+    (item) => item.label.toLowerCase() === inputValue.trim().toLowerCase(),
   );
 
   const handleSelect = (item: ComboboxItem) => {
@@ -73,6 +73,8 @@ export function Combobox({
       inputRef.current?.blur();
     }
   };
+
+  console.log("Filtered items:", filteredItems);
 
   return (
     <Popover open={isOpen}>

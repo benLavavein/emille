@@ -3,15 +3,31 @@ import { Link, useParams, useNavigate, useSearchParams } from "react-router";
 import { useSetBackUrl } from "~/lib/back-button";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { X, Timer, Play, Square, CheckCircle2, Carrot, ListOrdered } from "lucide-react";
+import {
+  X,
+  Timer,
+  Play,
+  Square,
+  CheckCircle2,
+  Carrot,
+  ListOrdered,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { Button } from "~/components/ui/button";
 
 type Step = { text: string; timerSeconds?: number };
 type ActiveTimer = { stepIndex: number; endTime: number } | null;
 
 const FRACTION_MAP: [number, string][] = [
-  [0.125, "⅛"], [0.25, "¼"], [0.333, "⅓"], [0.375, "⅜"],
-  [0.5, "½"], [0.625, "⅝"], [0.667, "⅔"], [0.75, "¾"], [0.875, "⅞"],
+  [0.125, "⅛"],
+  [0.25, "¼"],
+  [0.333, "⅓"],
+  [0.375, "⅜"],
+  [0.5, "½"],
+  [0.625, "⅝"],
+  [0.667, "⅔"],
+  [0.75, "¾"],
+  [0.875, "⅞"],
 ];
 
 function formatAmount(amount: number | undefined): string {
@@ -20,7 +36,7 @@ function formatAmount(amount: number | undefined): string {
   const whole = Math.floor(amount);
   const frac = amount - whole;
   const closest = FRACTION_MAP.reduce((best, [val, sym]) =>
-    Math.abs(frac - val) < Math.abs(frac - best[0]) ? [val, sym] : best
+    Math.abs(frac - val) < Math.abs(frac - best[0]) ? [val, sym] : best,
   );
   if (Math.abs(frac - (closest[0] as number)) < 0.05) {
     return whole > 0 ? `${whole}${closest[1]}` : (closest[1] as string);
@@ -220,7 +236,12 @@ function IngredientsOverlay({
   ingredients,
   onClose,
 }: {
-  ingredients: { name: string; amount?: number; unit?: string; notes?: string }[];
+  ingredients: {
+    name: string;
+    amount?: number;
+    unit?: string;
+    notes?: string;
+  }[];
   onClose: () => void;
 }) {
   return (
@@ -228,23 +249,19 @@ function IngredientsOverlay({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-60 bg-white flex flex-col"
+      className="fixed inset-0 z-60 bg-white flex flex-col items-center"
     >
-      <div className="flex items-center justify-between px-6 py-4 border-b border-blush/30">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-blush/30 w-full">
         <span className="text-lg font-semibold text-plum">Ingredients</span>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-lg text-mauve hover:text-plum hover:bg-blush/20 transition-colors"
-        >
-          <X className="size-6" />
-        </button>
       </div>
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-6 py-4 relative w-full">
         <div className="divide-y divide-blush/30">
           {ingredients.map((ing, i) => (
             <div key={i} className="flex items-center gap-3 py-3">
               <span className="text-mauve min-w-20 text-sm">
-                {[formatAmount(ing.amount), ing.unit].filter(Boolean).join(" ") || "—"}
+                {[formatAmount(ing.amount), ing.unit]
+                  .filter(Boolean)
+                  .join(" ") || "—"}
               </span>
               <span className="font-medium text-plum">{ing.name}</span>
               {ing.notes && (
@@ -254,6 +271,9 @@ function IngredientsOverlay({
           ))}
         </div>
       </div>
+      <Button onClick={onClose} className="w-[90%] py-8 m-4" variant="outline">
+        Back to instructions
+      </Button>
     </motion.div>
   );
 }
@@ -278,8 +298,8 @@ export default function CookPage() {
   const clearCooking = useMutation(api.users.clearCooking);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(0);
-  const [showIngredients, setShowIngredients] = useState(
-    () => searchParams.has("ingredients")
+  const [showIngredients, setShowIngredients] = useState(() =>
+    searchParams.has("ingredients"),
   );
   const hasInitialized = useRef(false);
 
@@ -329,7 +349,9 @@ export default function CookPage() {
     return (
       <div className="fixed inset-0 bg-white flex items-center justify-center">
         <div className="text-center p-8 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50">
-          <h2 className="text-xl font-semibold text-plum mb-2">Meal not found</h2>
+          <h2 className="text-xl font-semibold text-plum mb-2">
+            Meal not found
+          </h2>
           <Link
             to="/meals"
             className="inline-block px-6 py-3 bg-plum text-white rounded-lg hover:bg-plum/90 transition-colors font-medium mt-4"
@@ -354,7 +376,9 @@ export default function CookPage() {
           <span className="text-sm font-medium text-mauve">
             Step {currentStep + 1} of {steps.length}
           </span>
-          <span className="text-sm text-mauve/50 hidden sm:inline">· {meal.name}</span>
+          <span className="text-sm text-mauve/50 hidden sm:inline">
+            · {meal.name}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -394,8 +418,16 @@ export default function CookPage() {
             custom={direction}
             variants={{
               enter: (d: number) => ({ opacity: 0, y: d >= 0 ? 40 : -40 }),
-              center: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 500, damping: 38 } },
-              exit: (d: number) => ({ opacity: 0, y: d >= 0 ? -40 : 40, transition: { duration: 0.1 } }),
+              center: {
+                opacity: 1,
+                y: 0,
+                transition: { type: "spring", stiffness: 500, damping: 38 },
+              },
+              exit: (d: number) => ({
+                opacity: 0,
+                y: d >= 0 ? -40 : 40,
+                transition: { duration: 0.1 },
+              }),
             }}
             initial="enter"
             animate="center"

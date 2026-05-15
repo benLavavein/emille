@@ -37,7 +37,6 @@ function formatTime(totalSeconds: number): string {
 
 export function CookingCard() {
   const cooking = useQuery(api.meals.getCooking);
-  const clearCooking = useMutation(api.users.clearCooking);
   const endTime = cooking?.activeTimer?.endTime ?? null;
   const remaining = useCountdown(endTime);
   const timerRunning = endTime !== null && remaining > 0;

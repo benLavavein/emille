@@ -381,7 +381,7 @@ export function MealForm({
           <Combobox
             items={tagItems}
             placeholder="Add tags (e.g., healthy, quick, comfort food)"
-            emptyText="No tags yet"
+            emptyText="No existing tags found."
             onSelect={handleSelectTag}
             onCreate={handleCreateTag}
           />
