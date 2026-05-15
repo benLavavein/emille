@@ -246,13 +246,11 @@ function findRecipe(data: unknown): Record<string, unknown> | null {
 
   if (obj["@type"] === "Recipe") return obj;
 
-  // Handle arrays in @type (e.g. ["Recipe", "SomethingElse"])
   if (Array.isArray(obj["@type"]) && (obj["@type"] as string[]).includes("Recipe")) return obj;
 
-  // Handle @graph
-  if (Array.isArray(obj["@graph"])) {
-    for (const item of obj["@graph"] as unknown[]) {
-      const found = findRecipe(item);
+  for (const value of Object.values(obj)) {
+    if (value && typeof value === "object") {
+      const found = findRecipe(value);
       if (found) return found;
     }
   }
@@ -271,21 +269,41 @@ export const importFromUrl = action({
     const html = await res.text();
 
     // Extract all JSON-LD script tags
-    const jsonLdPattern = /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+    const jsonLdPattern = /<script[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi;
     let recipe: Record<string, unknown> | null = null;
     let match: RegExpExecArray | null;
+    const jsonLdBlocks: unknown[] = [];
 
     while ((match = jsonLdPattern.exec(html)) !== null) {
       try {
         const parsed = JSON.parse(match[1]);
+        jsonLdBlocks.push(parsed);
         recipe = findRecipe(parsed);
         if (recipe) break;
-      } catch {
+      } catch (e) {
+        console.warn("Failed to parse JSON-LD block:", (e as Error).message);
         continue;
       }
     }
 
-    if (!recipe) throw new Error("No recipe data found on that page.");
+    if (!recipe) {
+      console.log("URL fetched:", args.url);
+      console.log("HTML length:", html.length);
+      console.log("JSON-LD blocks found:", jsonLdBlocks.length);
+      for (let i = 0; i < jsonLdBlocks.length; i++) {
+        console.log(`Block ${i}:`, JSON.stringify(jsonLdBlocks[i], null, 2).slice(0, 2000));
+      }
+      if (jsonLdBlocks.length === 0) {
+        // Show a snippet around "ld+json" to see if it exists but didn't match
+        const ldIdx = html.indexOf("ld+json");
+        if (ldIdx !== -1) {
+          console.log("Found 'ld+json' in HTML at index", ldIdx, "— snippet:", html.slice(Math.max(0, ldIdx - 50), ldIdx + 200));
+        } else {
+          console.log("No 'ld+json' found in HTML at all. Page may use microdata or not have structured data.");
+        }
+      }
+      throw new Error("No recipe data found on that page.");
+    }
 
     const name = decodeHtmlEntities((recipe.name as string) || "Imported Recipe");
     const description = recipe.description
