@@ -99,11 +99,24 @@ function hashDailySeed(
   month: number,
   day: number,
 ): number {
-  let seed = year * 10000 + month * 100 + day;
+  let h = 2166136261; // FNV-1a offset basis
+  const mix = (v: number) => {
+    h ^= v & 0xff;
+    h = Math.imul(h, 16777619) >>> 0; // FNV-1a prime, coprime to 20 and 40
+  };
+
+  mix(year);
+  mix(year >>> 8);
+  mix(month);
+  mix(day);
+
   for (let i = 0; i < userId.length; i++) {
-    seed = seed ^ (userId.charCodeAt(i) * (i + 1));
+    const c = userId.charCodeAt(i);
+    mix(c);
+    mix(c >>> 8);
   }
-  return (seed * 2654435761) >>> 0;
+
+  return h;
 }
 
 export function getDailyGreeting(
@@ -128,9 +141,9 @@ export function HeroGreeting() {
   const firstName = user?.firstName || user?.username || "my friend";
 
   return (
-    <div className="flex items-center justify-around gap-6 mb-12">
-      <OtterIcon className="w-40 h-40 shrink-0" />
-      <h2 className="text-3xl font-bold text-plum">
+    <div className="flex items-center gap-2 mb-12">
+      <OtterIcon className="w-40 h-40 shrink-0 ml-20" />
+      <h2 className="text-3xl font-bold text-plum grow text-center">
         {getDailyGreeting(firstName, user?.id || "")}
       </h2>
     </div>

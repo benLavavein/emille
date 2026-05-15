@@ -30,8 +30,8 @@ function MealQueueItem({ meal }: { meal: Doc<"meals"> }) {
               <TooltipTrigger asChild>
                 <span className={arc}>
                   <Icon
-                    className={`size-3.5 transition-colors ${
-                      active ? "text-plum" : "text-plum/15"
+                    className={`size-4 transition-colors ${
+                      active ? "text-plum" : "text-plum/25"
                     }`}
                   />
                 </span>

@@ -34,6 +34,26 @@ const KNOWN_UNITS = new Set([
   "large", "medium", "small",
 ]);
 
+const UNIT_ABBREVIATIONS: Record<string, string> = {
+  tablespoon: "tbsp", tablespoons: "tbsp",
+  teaspoon: "tsp", teaspoons: "tsp",
+  ounce: "oz", ounces: "oz",
+  pound: "lb", pounds: "lb", lbs: "lb",
+  gram: "g", grams: "g",
+  kilogram: "kg", kilograms: "kg",
+  milliliter: "ml", milliliters: "ml",
+  liter: "l", liters: "l",
+  quart: "qt", quarts: "qt",
+  pint: "pt", pints: "pt",
+  gallon: "gal", gallons: "gal",
+  package: "pkg", packages: "pkg",
+  cup: "cup", cups: "cups",
+};
+
+function normalizeUnit(unit: string): string {
+  return UNIT_ABBREVIATIONS[unit] ?? unit;
+}
+
 const HTML_ENTITIES: Record<string, string> = {
   "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&apos;": "'",
   "&nbsp;": " ",
@@ -172,7 +192,7 @@ export function parseIngredientString(raw: string): {
   if (words.length > 0 && KNOWN_UNITS.has(words[0].toLowerCase().replace(/[.,]$/, ""))) {
     const unit = words[0].replace(/[.,]$/, "");
     const name = words.slice(1).join(" ").replace(/^of\s+/i, "").trim();
-    return { name: name || unit, amount, unit: unit.toLowerCase(), notes };
+    return { name: name || unit, amount, unit: normalizeUnit(unit.toLowerCase()), notes };
   }
 
   return { name: main.trim(), amount, unit: undefined, notes };

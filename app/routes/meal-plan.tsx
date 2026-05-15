@@ -80,9 +80,7 @@ export default function MealPlanPage() {
     try {
       await updatePlan({
         id: plan._id,
-        breakfastMealIds: editBreakfast
-          ? [editBreakfast as Id<"meals">]
-          : [],
+        breakfastMealIds: editBreakfast ? [editBreakfast as Id<"meals">] : [],
         lunchMealIds: editLunch ? [editLunch as Id<"meals">] : [],
         dinnerMealIds: editDinner ? [editDinner as Id<"meals">] : [],
       });
@@ -131,16 +129,13 @@ export default function MealPlanPage() {
   if (plan === null) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <Link
-          to="/"
-          className="text-mauve hover:text-plum transition-colors text-sm mb-6 inline-block"
-        >
-          ← Home
-        </Link>
         <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50">
-          <h1 className="text-xl font-semibold text-plum mb-2">No meal plan yet</h1>
+          <h1 className="text-xl font-semibold text-plum mb-2">
+            No meal plan yet
+          </h1>
           <p className="text-mauve mb-6 max-w-sm mx-auto">
-            Create an active meal plan to pick which meals you&apos;re cooking this week.
+            Create an active meal plan to pick which meals you&apos;re cooking
+            this week.
           </p>
           <Button onClick={handleStartPlan} disabled={isCreating}>
             {isCreating ? "Starting…" : "Start meal plan"}
@@ -155,10 +150,7 @@ export default function MealPlanPage() {
     plan.lunchMealIds.length +
     plan.dinnerMealIds.length;
 
-  const mealsBySlot: Record<
-    SlotKey,
-    (typeof plan.breakfastMeals)[0] | null
-  > = {
+  const mealsBySlot: Record<SlotKey, (typeof plan.breakfastMeals)[0] | null> = {
     breakfast: plan.breakfastMeals[0] ?? null,
     lunch: plan.lunchMeals[0] ?? null,
     dinner: plan.dinnerMeals[0] ?? null,
@@ -254,11 +246,7 @@ export default function MealPlanPage() {
           </div>
         )}
 
-        <Button
-          className="w-full"
-          disabled={isSubmitting}
-          onClick={handleSave}
-        >
+        <Button className="w-full" disabled={isSubmitting} onClick={handleSave}>
           {isSubmitting ? "Saving…" : "Save"}
         </Button>
       </div>
@@ -276,7 +264,9 @@ export default function MealPlanPage() {
         </Link>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-3xl font-bold text-plum">This week&apos;s plan</h1>
+            <h1 className="text-3xl font-bold text-plum">
+              This week&apos;s plan
+            </h1>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={enterEditMode}>

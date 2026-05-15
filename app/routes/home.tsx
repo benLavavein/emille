@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { HeroGreeting } from "~/components/dashboard/greeting";
 import { CookingCard } from "~/components/dashboard/cooking-card";
 import { CurrentMealPlan } from "~/components/dashboard/currentMealPlan";
+import { Book, BookHeart, ShoppingCart, Tags } from "lucide-react";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -48,8 +49,11 @@ function FeatureCard({
       to={href}
       className={`block p-6 rounded-2xl border-2 transition-all duration-200 ${colorClasses[color]}`}
     >
-      <div className={`mb-4 ${iconColorClasses[color]}`}>{icon}</div>
-      <h3 className="text-xl font-semibold text-plum mb-2">{title}</h3>
+      <div className="flex items-center gap-2">
+        <div className={`mb-4 ${iconColorClasses[color]}`}>{icon}</div>
+        <h3 className="text-xl font-semibold text-plum mb-2">{title}</h3>
+      </div>
+
       <p className="text-mauve">{description}</p>
     </Link>
   );
@@ -72,19 +76,11 @@ function HomeDashboard() {
           href="/meals"
           color="plum"
           icon={
-            <svg
-              className="w-10 h-10"
-              fill="none"
+            <BookHeart
+              className="size-10"
               stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
-              />
-            </svg>
+              strokeWidth={1.5}
+            />
           }
         />
         <FeatureCard
@@ -93,25 +89,7 @@ function HomeDashboard() {
           href="/ingredients"
           color="mauve"
           icon={
-            <svg
-              className="w-10 h-10"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M6 6h.008v.008H6V6z"
-              />
-            </svg>
+            <Tags className="size-10" stroke="currentColor" strokeWidth={1.5} />
           }
         />
         <FeatureCard
@@ -120,19 +98,11 @@ function HomeDashboard() {
           href="/stores"
           color="peach"
           icon={
-            <svg
-              className="w-10 h-10"
-              fill="none"
+            <ShoppingCart
+              className="size-10"
               stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
-              />
-            </svg>
+              strokeWidth={1.5}
+            />
           }
         />
       </div>
@@ -176,79 +146,6 @@ export default function Home() {
       <SignedIn>
         <HomeDashboard />
       </SignedIn>
-
-      <SignedOut>
-        {/* Signed out view */}
-        <div className="text-center">
-          <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 border border-blush/50 max-w-md mx-auto">
-            <p className="text-mauve mb-6">
-              Sign in to start planning your meals and organizing your kitchen.
-            </p>
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="p-4 rounded-xl bg-plum/10 border border-plum/20">
-                  <svg
-                    className="w-8 h-8 mx-auto text-plum mb-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
-                    />
-                  </svg>
-                  <span className="text-sm text-plum font-medium">Recipes</span>
-                </div>
-                <div className="p-4 rounded-xl bg-mauve/10 border border-mauve/20">
-                  <svg
-                    className="w-8 h-8 mx-auto text-mauve mb-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M6 6h.008v.008H6V6z"
-                    />
-                  </svg>
-                  <span className="text-sm text-mauve font-medium">
-                    Ingredients
-                  </span>
-                </div>
-                <div className="p-4 rounded-xl bg-peach/30 border border-peach/50">
-                  <svg
-                    className="w-8 h-8 mx-auto text-plum mb-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
-                    />
-                  </svg>
-                  <span className="text-sm text-plum font-medium">
-                    Shopping
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </SignedOut>
     </div>
   );
 }

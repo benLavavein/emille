@@ -74,8 +74,6 @@ export function Combobox({
     }
   };
 
-  console.log("Filtered items:", filteredItems);
-
   return (
     <Popover open={isOpen}>
       <PopoverAnchor asChild>

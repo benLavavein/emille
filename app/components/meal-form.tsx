@@ -5,10 +5,18 @@ import { api } from "convex/_generated/api";
 import { Combobox, type ComboboxItem } from "~/components/ui/combobox";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { X, ChevronUp, ChevronDown, ArrowUpDown, Timer } from "lucide-react";
+import {
+  X,
+  ChevronUp,
+  ChevronDown,
+  ArrowUpDown,
+  Timer,
+  Trash,
+} from "lucide-react";
 import { QuantityInput } from "~/components/ui/quantity-input";
 import { MEAL_TIMES } from "~/lib/constants/meals";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
+import { Input } from "./ui/input";
 
 function AutoResizeTextarea(props: React.ComponentProps<"textarea">) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -76,7 +84,6 @@ type MealFormProps = {
   submitLabel: string;
   submittingLabel: string;
   title: string;
-  backLabel: string;
 };
 
 export function MealForm({
@@ -86,7 +93,6 @@ export function MealForm({
   submitLabel,
   submittingLabel,
   title,
-  backLabel,
 }: MealFormProps) {
   const existingIngredients = useQuery(api.ingredients.list);
   const existingTags = useQuery(api.tags.list);
@@ -281,13 +287,12 @@ export function MealForm({
           >
             Meal Name
           </label>
-          <input
+          <Input
             id="name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Grandma's Chicken Soup"
-            className="w-full px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum placeholder:text-mauve/50"
             required
           />
         </div>
@@ -319,14 +324,13 @@ export function MealForm({
             >
               Prep Time (min)
             </label>
-            <input
+            <Input
               id="prepTime"
               type="number"
               min="0"
               value={prepTimeMin}
               onChange={(e) => setPrepTimeMin(e.target.value)}
               placeholder="10"
-              className="w-full px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum placeholder:text-mauve/50"
             />
           </div>
           <div className="flex-1">
@@ -336,14 +340,13 @@ export function MealForm({
             >
               Cook Time (min)
             </label>
-            <input
+            <Input
               id="cookTime"
               type="number"
               min="0"
               value={cookTimeMin}
               onChange={(e) => setCookTimeMin(e.target.value)}
               placeholder="30"
-              className="w-full px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum placeholder:text-mauve/50"
             />
           </div>
         </div>
@@ -448,13 +451,13 @@ export function MealForm({
                       placeholder="cups, oz..."
                     />
 
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => removeIngredient(index)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1"
                     >
-                      <X className="h-4 w-4" />
-                    </button>
+                      <Trash className="size-4 text-red-600" />
+                    </Button>
                   </div>
                 ))
               )}

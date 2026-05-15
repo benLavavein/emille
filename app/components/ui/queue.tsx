@@ -58,7 +58,7 @@ export function QueueHeader({
   search,
 }: QueueHeaderProps) {
   return (
-    <header className="shrink-0 border-b border-blush/40 bg-white/80 pt-3 pb-2 backdrop-blur-md md:px-4 md:pt-4 flex flex-col gap-2">
+    <header className="shrink-0 border-b border-blush/40 bg-white/80 pt-3 pb-2 backdrop-blur-md md:pt-4 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2 px-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <h1 className="truncate text-lg font-bold text-plum px-3">{title}</h1>
@@ -81,7 +81,7 @@ export function QueueHeader({
           placeholder={search.placeholder}
         />
         <Button variant="ghost" size="icon">
-          <Filter className="size-4 text-plum" />
+          <Filter className="size-5 text-plum" />
         </Button>
       </div>
     </header>
@@ -125,7 +125,7 @@ export function queueRowClassName(options: {
 }) {
   const { active, className } = options;
   return cn(
-    "flex w-full items-center gap-2 py-2.5 h-12.5 pl-3.5 pr-3.5 text-left text-sm transition-colors",
+    "flex w-full items-center gap-2 py-2.5 h-12.5 pl-3.5 pr-3.5 text-left transition-colors",
     active ? "bg-plum/12 font-medium text-plum" : "text-plum hover:bg-blush/30",
     className,
   );

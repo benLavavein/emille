@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   CookingPot,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 import { CookButton } from "./components/cook-button";
 import type { Id } from "convex/_generated/dataModel";
@@ -128,13 +129,20 @@ export default function MealDetailsPage() {
   }
 
   return (
-    <>
+    <Tabs defaultValue="ingredients" className="flex flex-col h-full">
       {isCookingThisMeal && (
-        <div className="flex gap-4 bg-peach px-3 py-6 items-center">
+        <div className="flex gap-4 bg-peach p-6 items-center shadow-md shrink-0">
           <CookingPot className="size-8 text-plum" />
-          <h1 className="text-lg text-plum grow text-center">
-            This meal is in the works!
-          </h1>
+          <div className="grow flex flex-col">
+            <h1 className="text-lg text-plum text-center">
+              Currently cooking!
+            </h1>
+            <p className="text-mauve text-sm text-center">
+              Step {currentlyCooking?.stepIndex + 1} of{" "}
+              {currentlyCooking?.totalSteps}
+            </p>
+          </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -145,7 +153,8 @@ export default function MealDetailsPage() {
           </Button>
         </div>
       )}
-      <div className="max-w-5xl mx-auto px-4 py-6 md:px-8 md:py-8">
+
+      <div className="shrink-0 max-w-5xl mx-auto w-full px-4 pt-6 md:px-8 md:pt-8">
         <div className="mb-6 md:mb-8">
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
@@ -202,7 +211,7 @@ export default function MealDetailsPage() {
           )}
 
           {/* Meal Times Icons */}
-          <div className="flex items-end gap-2 mt-4">
+          {/* <div className="flex items-end gap-2 mt-4">
             {MEAL_TIMES.map((time, index) => {
               const Icon = MEAL_TIME_ICONS[time];
               const isActive = meal.mealTimes?.includes(time);
@@ -225,7 +234,7 @@ export default function MealDetailsPage() {
                 </Tooltip>
               );
             })}
-          </div>
+          </div> */}
 
           {/* Tags */}
           {meal.tags && meal.tags.length > 0 && (
@@ -260,37 +269,44 @@ export default function MealDetailsPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Ingredients Section */}
-          <div>
-            <h2 className="text-lg font-semibold text-plum mb-3">
-              Ingredients
-            </h2>
+        <TabsList className="w-full">
+          <TabsTrigger value="ingredients" className="flex-1">
+            Ingredients
+          </TabsTrigger>
+          <TabsTrigger value="recipe" className="flex-1">
+            Recipe
+          </TabsTrigger>
+        </TabsList>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+        <div className="max-w-5xl mx-auto w-full px-4 pb-6 md:px-8 md:pb-8">
+          <TabsContent value="ingredients">
             <div className="bg-white/60 backdrop-blur-sm rounded-md border border-blush/50 divide-y divide-blush/30">
-              {meal.ingredientsWithDetails.map((ing: any, index: number) => (
-                <div key={index} className="flex items-center gap-3 p-4">
-                  <span className="text-mauve min-w-20">
+              {meal.ingredientsWithDetails.map((ing, index: number) => (
+                <div key={index} className="flex gap-3 p-4 items-center">
+                  <span className="text-mauve w-24 shrink-0 text-sm">
                     {[formatAmount(ing.amount), ing.unit]
                       .filter(Boolean)
                       .join(" ") || "—"}
                   </span>
-                  <span className="font-medium text-plum">
-                    {ing.name || ing.ingredient?.name || "Unknown ingredient"}
-                  </span>
-                  {ing.notes && (
-                    <span className="text-mauve/70 text-sm">({ing.notes})</span>
-                  )}
+                  <div className="flex flex-col">
+                    <span className="font-medium text-plum">
+                      {ing.name || ing.ingredient?.name || "Unknown ingredient"}
+                    </span>
+                    {ing.notes && (
+                      <span className="text-mauve/70 text-xs">
+                        ({ing.notes})
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          </TabsContent>
 
-          {/* Recipe Steps */}
-          {meal.steps && meal.steps.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold text-plum mb-3">
-                Recipe Steps
-              </h2>
+          <TabsContent value="recipe">
+            {meal.steps && meal.steps.length > 0 ? (
               <div className="space-y-3">
                 {meal.steps.map((step: any, index: number) => (
                   <div
@@ -314,10 +330,12 @@ export default function MealDetailsPage() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-mauve text-sm py-4">No recipe steps yet.</p>
+            )}
+          </TabsContent>
         </div>
       </div>
-    </>
+    </Tabs>
   );
 }
