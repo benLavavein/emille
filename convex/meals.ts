@@ -52,18 +52,6 @@ export const get = query({
       return null;
     }
 
-    const ingredientsWithDetails = await Promise.all(
-      meal.ingredients.map(async (ing) => {
-        const ingredient = ing.ingredientId
-          ? await ctx.db.get(ing.ingredientId)
-          : null;
-        return {
-          ...ing,
-          ingredient,
-        };
-      })
-    );
-
     // Fetch tag details
     const tags = await Promise.all(
       (meal.tagIds || []).map(async (tagId) => {
@@ -75,7 +63,6 @@ export const get = query({
     return {
       ...meal,
       steps: normalizeSteps(meal.steps),
-      ingredientsWithDetails,
       tags: tags.filter(Boolean),
     };
   },
@@ -93,7 +80,6 @@ export const create = mutation({
     ingredients: v.array(
       v.object({
         name: v.string(),
-        ingredientId: v.optional(v.id("ingredients")),
         amount: v.optional(v.float64()),
         unit: v.optional(v.string()),
         notes: v.optional(v.string()),
@@ -108,15 +94,6 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-
-    for (const ing of args.ingredients) {
-      if (ing.ingredientId) {
-        const ingredient = await ctx.db.get(ing.ingredientId);
-        if (!ingredient || ingredient.userId !== user._id) {
-          throw new Error("Invalid ingredient");
-        }
-      }
-    }
 
     // Verify all tags belong to this user
     for (const tagId of args.tagIds) {
@@ -155,7 +132,6 @@ export const update = mutation({
       v.array(
         v.object({
           name: v.string(),
-          ingredientId: v.optional(v.id("ingredients")),
           amount: v.optional(v.float64()),
           unit: v.optional(v.string()),
           notes: v.optional(v.string()),
@@ -177,17 +153,6 @@ export const update = mutation({
 
     if (!meal || meal.userId !== user._id) {
       throw new Error("Meal not found");
-    }
-
-    if (args.ingredients) {
-      for (const ing of args.ingredients) {
-        if (ing.ingredientId) {
-          const ingredient = await ctx.db.get(ing.ingredientId);
-          if (!ingredient || ingredient.userId !== user._id) {
-            throw new Error("Invalid ingredient");
-          }
-        }
-      }
     }
 
     // If updating tags, verify they all belong to this user

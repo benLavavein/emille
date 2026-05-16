@@ -3,15 +3,7 @@ import { Link } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
-import {
-  GripVertical,
-  Plus,
-  Trash2,
-  Check,
-  X,
-  ArrowUpDown,
-  Store,
-} from "lucide-react";
+import { GripVertical, Plus, Check, X } from "lucide-react";
 
 export function meta() {
   return [
@@ -20,64 +12,33 @@ export function meta() {
   ];
 }
 
+function formatQuantity(amount?: number, unit?: string): string | null {
+  if (!amount && !unit) return null;
+  const parts: string[] = [];
+  if (amount != null) {
+    parts.push(
+      Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace(/0+$/, "").replace(/\.$/, ""),
+    );
+  }
+  if (unit) parts.push(unit);
+  return parts.join(" ");
+}
+
 export default function ShoppingListPage() {
   const shoppingList = useQuery(api.shoppingList.get);
-  const stores = useQuery(api.groceryStores.list);
-  const user = useQuery(api.users.getMe);
   const addItem = useMutation(api.shoppingList.addItem);
   const toggleItem = useMutation(api.shoppingList.toggleItem);
   const removeItem = useMutation(api.shoppingList.removeItem);
   const reorderItems = useMutation(api.shoppingList.reorderItems);
   const clearChecked = useMutation(api.shoppingList.clearChecked);
-  const setDefaultStore = useMutation(api.users.setDefaultStore);
 
   const [newItemName, setNewItemName] = useState("");
-  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
-  const [sortByStore, setSortByStore] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 
-  // Set initial selected store from user default
-  const effectiveStoreId = selectedStoreId ?? user?.defaultStoreId ?? null;
-
-  // Get the selected store details
-  const selectedStore = stores?.find((s) => s._id === effectiveStoreId);
-
-  // Sort items based on store aisle order if enabled
-  const sortedItems = useMemo(() => {
+  const items = useMemo(() => {
     if (!shoppingList?.items) return [];
-
-    let items = [...shoppingList.items];
-
-    if (sortByStore && selectedStore) {
-      // Create a map of section name to order
-      const sectionOrderMap = new Map(
-        selectedStore.sections.map((s) => [s.name, s.order])
-      );
-
-      items.sort((a, b) => {
-        const aSection = a.ingredient?.storeSectionName;
-        const bSection = b.ingredient?.storeSectionName;
-        const aStoreMatches = a.ingredient?.storeId === selectedStore._id;
-        const bStoreMatches = b.ingredient?.storeId === selectedStore._id;
-
-        // Items without this store go to bottom
-        if (aStoreMatches && !bStoreMatches) return -1;
-        if (!aStoreMatches && bStoreMatches) return 1;
-        if (!aStoreMatches && !bStoreMatches) return a.order - b.order;
-
-        // Both have this store - sort by section order
-        const aOrder = aSection ? sectionOrderMap.get(aSection) ?? 999 : 999;
-        const bOrder = bSection ? sectionOrderMap.get(bSection) ?? 999 : 999;
-
-        if (aOrder !== bOrder) return aOrder - bOrder;
-
-        // Same section - maintain original order
-        return a.order - b.order;
-      });
-    }
-
-    return items;
-  }, [shoppingList?.items, sortByStore, selectedStore]);
+    return [...shoppingList.items].sort((a, b) => a.order - b.order);
+  }, [shoppingList?.items]);
 
   const handleAddItem = async () => {
     if (!newItemName.trim()) return;
@@ -99,7 +60,7 @@ export default function ShoppingListPage() {
 
   const handleDragOver = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
-    if (!draggedItemId || draggedItemId === targetId || sortByStore) return;
+    if (!draggedItemId || draggedItemId === targetId) return;
 
     const currentItems = shoppingList?.items || [];
     const draggedIndex = currentItems.findIndex((i) => i.id === draggedItemId);
@@ -118,18 +79,8 @@ export default function ShoppingListPage() {
     setDraggedItemId(null);
   };
 
-  const handleStoreChange = (storeId: string) => {
-    setSelectedStoreId(storeId || null);
-  };
-
-  const handleSetAsDefault = async () => {
-    if (effectiveStoreId) {
-      await setDefaultStore({ storeId: effectiveStoreId as any });
-    }
-  };
-
-  const checkedCount = sortedItems.filter((i) => i.checked).length;
-  const uncheckedCount = sortedItems.length - checkedCount;
+  const checkedCount = items.filter((i) => i.checked).length;
+  const uncheckedCount = items.length - checkedCount;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -138,53 +89,9 @@ export default function ShoppingListPage() {
           to="/"
           className="text-mauve hover:text-plum transition-colors text-sm mb-2 inline-block"
         >
-          ← Back to home
+          &larr; Back to home
         </Link>
         <h1 className="text-3xl font-bold text-plum">Shopping List</h1>
-      </div>
-
-      {/* Store Selector */}
-      <div className="mb-6 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50">
-        <div className="flex items-center gap-3 mb-3">
-          <Store className="w-5 h-5 text-plum" />
-          <label className="text-sm font-medium text-plum">Store</label>
-        </div>
-        <div className="flex gap-3">
-          <select
-            value={effectiveStoreId || ""}
-            onChange={(e) => handleStoreChange(e.target.value)}
-            className="flex-1 px-3 py-2 rounded-lg border border-blush/50 bg-white/60 text-plum focus:outline-none focus:ring-2 focus:ring-plum/30"
-          >
-            <option value="">No store selected</option>
-            {stores?.map((store) => (
-              <option key={store._id} value={store._id}>
-                {store.name}
-                {user?.defaultStoreId === store._id ? " (default)" : ""}
-              </option>
-            ))}
-          </select>
-          {effectiveStoreId && user?.defaultStoreId !== effectiveStoreId && (
-            <Button variant="outline" size="sm" onClick={handleSetAsDefault}>
-              Set as default
-            </Button>
-          )}
-        </div>
-
-        {effectiveStoreId && (
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              onClick={() => setSortByStore(!sortByStore)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                sortByStore
-                  ? "bg-plum text-white"
-                  : "bg-blush/30 text-plum hover:bg-blush/50"
-              }`}
-            >
-              <ArrowUpDown className="w-4 h-4" />
-              Sort by aisle order
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Add Item */}
@@ -208,7 +115,7 @@ export default function ShoppingListPage() {
       </div>
 
       {/* List Stats */}
-      {sortedItems.length > 0 && (
+      {items.length > 0 && (
         <div className="flex items-center justify-between mb-4 text-sm text-mauve">
           <span>
             {uncheckedCount} item{uncheckedCount !== 1 ? "s" : ""} remaining
@@ -232,7 +139,7 @@ export default function ShoppingListPage() {
           <div className="w-8 h-8 border-2 border-plum/30 border-t-plum rounded-full animate-spin mx-auto"></div>
           <p className="text-mauve mt-4">Loading...</p>
         </div>
-      ) : sortedItems.length === 0 ? (
+      ) : items.length === 0 ? (
         <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-2xl border border-blush/50">
           <svg
             className="w-16 h-16 mx-auto text-blush mb-4"
@@ -262,61 +169,67 @@ export default function ShoppingListPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {sortedItems.map((item) => (
-            <div
-              key={item.id}
-              draggable={!sortByStore}
-              onDragStart={() => handleDragStart(item.id)}
-              onDragOver={(e) => handleDragOver(e, item.id)}
-              onDragEnd={handleDragEnd}
-              className={`flex items-center gap-3 p-4 bg-white/60 backdrop-blur-sm rounded-xl border transition-all ${
-                item.checked
-                  ? "border-blush/30 opacity-60"
-                  : "border-blush/50"
-              } ${
-                draggedItemId === item.id ? "opacity-50 shadow-lg" : ""
-              } ${!sortByStore ? "cursor-grab active:cursor-grabbing" : ""}`}
-            >
-              {!sortByStore && (
-                <GripVertical className="w-5 h-5 text-mauve/50 shrink-0" />
-              )}
-
-              <button
-                onClick={() => handleToggle(item.id)}
-                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+          {items.map((item) => {
+            const qty = formatQuantity(item.amount, item.unit);
+            return (
+              <div
+                key={item.id}
+                draggable
+                onDragStart={() => handleDragStart(item.id)}
+                onDragOver={(e) => handleDragOver(e, item.id)}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center gap-3 p-4 bg-white/60 backdrop-blur-sm rounded-xl border transition-all ${
                   item.checked
-                    ? "bg-plum border-plum text-white"
-                    : "border-blush/50 bg-white/60 hover:border-plum/50"
-                }`}
+                    ? "border-blush/30 opacity-60"
+                    : "border-blush/50"
+                } ${
+                  draggedItemId === item.id ? "opacity-50 shadow-lg" : ""
+                } cursor-grab active:cursor-grabbing`}
               >
-                {item.checked && <Check className="w-4 h-4" />}
-              </button>
+                <GripVertical className="w-5 h-5 text-mauve/50 shrink-0" />
 
-              <div className="flex-1 min-w-0">
-                <span
-                  className={`font-medium ${
-                    item.checked ? "text-mauve line-through" : "text-plum"
+                <button
+                  onClick={() => handleToggle(item.id)}
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    item.checked
+                      ? "bg-plum border-plum text-white"
+                      : "border-blush/50 bg-white/60 hover:border-plum/50"
                   }`}
                 >
-                  {item.name}
-                </span>
-                {sortByStore && item.ingredient?.storeSectionName && (
-                  <span className="ml-2 text-xs text-mauve/70">
-                    ({item.ingredient.storeSectionName})
-                  </span>
-                )}
-              </div>
+                  {item.checked && <Check className="w-4 h-4" />}
+                </button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleRemove(item.id)}
-                className="h-8 w-8 text-mauve/50 hover:text-destructive"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span
+                      className={`font-medium ${
+                        item.checked ? "text-mauve line-through" : "text-plum"
+                      }`}
+                    >
+                      {item.name}
+                    </span>
+                    {qty && (
+                      <span className="text-sm text-mauve/70">{qty}</span>
+                    )}
+                  </div>
+                  {item.mealName && (
+                    <span className="text-xs text-mauve/60">
+                      {item.mealName}
+                    </span>
+                  )}
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemove(item.id)}
+                  className="h-8 w-8 text-mauve/50 hover:text-destructive"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

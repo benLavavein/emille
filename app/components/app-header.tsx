@@ -5,7 +5,6 @@ import {
   Menu,
   Home,
   UtensilsCrossed,
-  Tag,
   Store,
   Calendar,
   ShoppingCart,
@@ -26,7 +25,6 @@ export const navLinks = [
   { href: "/", label: "Home", icon: Home },
   { href: "/meals", label: "Meals", icon: UtensilsCrossed },
   { href: "/meal-plan", label: "Meal plan", icon: Calendar },
-  { href: "/ingredients", label: "Ingredients", icon: Tag },
   { href: "/stores", label: "Stores", icon: Store },
   { href: "/shopping-list", label: "Shopping List", icon: ShoppingCart },
 ];

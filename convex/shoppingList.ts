@@ -2,7 +2,10 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./users";
 
-// Get the user's shopping list
+function normalizeForSort(name: string): string {
+  return name.trim().toLowerCase().replace(/e?s$/, "");
+}
+
 export const get = query({
   args: {},
   handler: async (ctx) => {
@@ -17,37 +20,22 @@ export const get = query({
       return { items: [] };
     }
 
-    // Fetch ingredient details for items that have ingredientId
-    const itemsWithDetails = await Promise.all(
-      shoppingList.items.map(async (item) => {
-        if (item.ingredientId) {
-          const ingredient = await ctx.db.get(item.ingredientId);
-          return {
-            ...item,
-            ingredient,
-          };
-        }
-        return { ...item, ingredient: null };
-      })
-    );
-
     return {
       ...shoppingList,
-      items: itemsWithDetails.sort((a, b) => a.order - b.order),
+      items: [...shoppingList.items].sort((a, b) => a.order - b.order),
     };
   },
 });
 
-// Add an item to the shopping list
 export const addItem = mutation({
   args: {
     name: v.string(),
-    ingredientId: v.optional(v.id("ingredients")),
+    amount: v.optional(v.float64()),
+    unit: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
-    // Get or create shopping list
     let shoppingList = await ctx.db
       .query("shoppingLists")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -56,7 +44,8 @@ export const addItem = mutation({
     const newItem = {
       id: crypto.randomUUID(),
       name: args.name,
-      ingredientId: args.ingredientId,
+      amount: args.amount,
+      unit: args.unit,
       checked: false,
       order: shoppingList ? shoppingList.items.length : 0,
     };
@@ -75,7 +64,6 @@ export const addItem = mutation({
   },
 });
 
-// Toggle an item's checked status
 export const toggleItem = mutation({
   args: {
     itemId: v.string(),
@@ -101,7 +89,6 @@ export const toggleItem = mutation({
   },
 });
 
-// Remove an item from the shopping list
 export const removeItem = mutation({
   args: {
     itemId: v.string(),
@@ -127,7 +114,6 @@ export const removeItem = mutation({
   },
 });
 
-// Reorder items in the shopping list
 export const reorderItems = mutation({
   args: {
     itemIds: v.array(v.string()),
@@ -144,10 +130,8 @@ export const reorderItems = mutation({
       throw new Error("Shopping list not found");
     }
 
-    // Create a map for quick lookup
     const itemMap = new Map(shoppingList.items.map((item) => [item.id, item]));
 
-    // Reorder based on provided order
     const reorderedItems = args.itemIds.map((id, index) => {
       const item = itemMap.get(id);
       if (!item) throw new Error(`Item ${id} not found`);
@@ -159,7 +143,6 @@ export const reorderItems = mutation({
   },
 });
 
-// Clear all checked items
 export const clearChecked = mutation({
   args: {},
   handler: async (ctx) => {
@@ -183,7 +166,6 @@ export const clearChecked = mutation({
   },
 });
 
-// Clear all items
 export const clearAll = mutation({
   args: {},
   handler: async (ctx) => {
@@ -203,7 +185,6 @@ export const clearAll = mutation({
   },
 });
 
-// Add ingredients from a meal plan to shopping list
 export const addFromMealPlan = mutation({
   args: {
     mealPlanId: v.id("mealPlans"),
@@ -216,24 +197,12 @@ export const addFromMealPlan = mutation({
       throw new Error("Meal plan not found");
     }
 
-    // Get or create shopping list
     let shoppingList = await ctx.db
       .query("shoppingLists")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .first();
 
     const existingItems = shoppingList?.items || [];
-    const existingIngredientIds = new Set(
-      existingItems.filter((i) => i.ingredientId).map((i) => i.ingredientId)
-    );
-
-    const newItems: Array<{
-      id: string;
-      name: string;
-      ingredientId?: string;
-      checked: boolean;
-      order: number;
-    }> = [];
 
     const mealIds = [
       ...new Set([
@@ -243,23 +212,44 @@ export const addFromMealPlan = mutation({
       ]),
     ];
 
+    const newItems: Array<{
+      id: string;
+      name: string;
+      amount?: number;
+      unit?: string;
+      notes?: string;
+      mealName?: string;
+      checked: boolean;
+      order: number;
+    }> = [];
+
     for (const mealId of mealIds) {
       const meal = await ctx.db.get(mealId);
       if (!meal) continue;
 
       for (const mealIngredient of meal.ingredients) {
-        if (mealIngredient.ingredientId && existingIngredientIds.has(mealIngredient.ingredientId)) continue;
-
-        if (newItems.some((i) => i.name === mealIngredient.name)) continue;
-
         newItems.push({
           id: crypto.randomUUID(),
           name: mealIngredient.name,
-          ingredientId: mealIngredient.ingredientId,
+          amount: mealIngredient.amount,
+          unit: mealIngredient.unit,
+          notes: mealIngredient.notes,
+          mealName: meal.name,
           checked: false,
-          order: existingItems.length + newItems.length,
+          order: 0,
         });
       }
+    }
+
+    // Sort new items by normalized name so similar ingredients cluster together
+    newItems.sort((a, b) =>
+      normalizeForSort(a.name).localeCompare(normalizeForSort(b.name))
+    );
+
+    // Assign order values: existing items keep theirs, new items follow after
+    const startOrder = existingItems.length;
+    for (let i = 0; i < newItems.length; i++) {
+      newItems[i].order = startOrder + i;
     }
 
     const allItems = [...existingItems, ...newItems];

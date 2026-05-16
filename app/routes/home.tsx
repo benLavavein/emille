@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { HeroGreeting } from "~/components/dashboard/greeting";
 import { CookingCard } from "~/components/dashboard/cooking-card";
 import { CurrentMealPlan } from "~/components/dashboard/currentMealPlan";
-import { Book, BookHeart, ShoppingCart, Tags } from "lucide-react";
+import { BookHeart, ShoppingCart } from "lucide-react";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -69,7 +69,7 @@ function HomeDashboard() {
       </div>
 
       {/* Feature Cards */}
-      <div className="grid md:grid-cols-3 gap-6 mb-12">
+      <div className="grid md:grid-cols-2 gap-6 mb-12">
         <FeatureCard
           title="Meals"
           description="Create and organize your favorite recipes with ingredients and step-by-step instructions."
@@ -81,15 +81,6 @@ function HomeDashboard() {
               stroke="currentColor"
               strokeWidth={1.5}
             />
-          }
-        />
-        <FeatureCard
-          title="Ingredients"
-          description="Keep track of all your ingredients and organize them by grocery store sections."
-          href="/ingredients"
-          color="mauve"
-          icon={
-            <Tags className="size-10" stroke="currentColor" strokeWidth={1.5} />
           }
         />
         <FeatureCard
@@ -117,19 +108,19 @@ function HomeDashboard() {
             <span className="w-6 h-6 rounded-full bg-plum/20 text-plum flex items-center justify-center text-sm font-medium">
               1
             </span>
-            Add your favorite ingredients
+            Create meals with recipes or import from a URL
           </li>
           <li className="flex items-center gap-3">
             <span className="w-6 h-6 rounded-full bg-plum/20 text-plum flex items-center justify-center text-sm font-medium">
               2
             </span>
-            Create meals with recipes
+            Build a meal plan for the week
           </li>
           <li className="flex items-center gap-3">
             <span className="w-6 h-6 rounded-full bg-plum/20 text-plum flex items-center justify-center text-sm font-medium">
               3
             </span>
-            Set up your grocery stores for easy shopping lists
+            Generate a shopping list from your meal plan
           </li>
         </ul>
       </div>

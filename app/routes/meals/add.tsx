@@ -105,7 +105,6 @@ export default function AddMealPage() {
       tagIds: data.tagIds as any,
       ingredients: data.ingredients.map((ing) => ({
         name: ing.name,
-        ...(ing.ingredientId ? { ingredientId: ing.ingredientId as any } : {}),
         amount: ing.amount,
         unit: ing.unit,
         notes: ing.notes,

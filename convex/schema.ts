@@ -23,25 +23,6 @@ export default defineSchema({
     ),
   }).index("by_clerk_id", ["clerkId"]),
 
-  // Ingredients that the user has created/used
-  ingredients: defineTable({
-    userId: v.id("users"),
-    name: v.string(),
-    storeLocations: v.optional(
-      v.array(
-        v.object({
-          storeId: v.id("groceryStores"),
-          sectionName: v.string(),
-        })
-      )
-    ),
-    defaultQuantityType: v.optional(v.string()), // Default unit: "cup", "tablespoon", etc.
-    notes: v.optional(v.string()),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_and_name", ["userId", "name"]),
-
   // Tags for categorizing meals
   tags: defineTable({
     userId: v.id("users"),
@@ -63,7 +44,6 @@ export default defineSchema({
     ingredients: v.array(
       v.object({
         name: v.string(),
-        ingredientId: v.optional(v.id("ingredients")),
         amount: v.optional(v.float64()),
         unit: v.optional(v.string()),
         notes: v.optional(v.string()),
@@ -113,9 +93,12 @@ export default defineSchema({
     userId: v.id("users"),
     items: v.array(
       v.object({
-        id: v.string(), // Unique ID for reordering
+        id: v.string(),
         name: v.string(),
-        ingredientId: v.optional(v.id("ingredients")), // Link to ingredient if exists
+        amount: v.optional(v.float64()),
+        unit: v.optional(v.string()),
+        notes: v.optional(v.string()),
+        mealName: v.optional(v.string()),
         checked: v.boolean(),
         order: v.number(),
       })

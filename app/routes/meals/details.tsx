@@ -283,7 +283,7 @@ export default function MealDetailsPage() {
         <div className="max-w-5xl mx-auto w-full px-4 pb-6 md:px-8 md:pb-8">
           <TabsContent value="ingredients">
             <div className="bg-white/60 backdrop-blur-sm rounded-md border border-blush/50 divide-y divide-blush/30">
-              {meal.ingredientsWithDetails.map((ing, index: number) => (
+              {meal.ingredients.map((ing, index: number) => (
                 <div key={index} className="flex gap-3 p-4 items-center">
                   <span className="text-mauve w-24 shrink-0 text-sm">
                     {[formatAmount(ing.amount), ing.unit]
@@ -292,7 +292,7 @@ export default function MealDetailsPage() {
                   </span>
                   <div className="flex flex-col">
                     <span className="font-medium text-plum">
-                      {ing.name || ing.ingredient?.name || "Unknown ingredient"}
+                      {ing.name}
                     </span>
                     {ing.notes && (
                       <span className="text-mauve/70 text-xs">

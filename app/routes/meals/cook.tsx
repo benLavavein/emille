@@ -481,8 +481,8 @@ export default function CookPage() {
       <AnimatePresence>
         {showIngredients && (
           <IngredientsOverlay
-            ingredients={meal.ingredientsWithDetails.map((ing: any) => ({
-              name: ing.name || ing.ingredient?.name || "Unknown",
+            ingredients={meal.ingredients.map((ing: any) => ({
+              name: ing.name,
               amount: ing.amount,
               unit: ing.unit,
               notes: ing.notes,

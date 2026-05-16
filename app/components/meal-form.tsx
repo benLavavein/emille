@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Link } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Combobox, type ComboboxItem } from "~/components/ui/combobox";
@@ -7,6 +6,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
   X,
+  Plus,
   ChevronUp,
   ChevronDown,
   ArrowUpDown,
@@ -34,7 +34,6 @@ function AutoResizeTextarea(props: React.ComponentProps<"textarea">) {
 }
 
 export type MealIngredient = {
-  ingredientId?: string;
   name: string;
   amount: number | undefined;
   unit: string;
@@ -60,7 +59,6 @@ export type MealFormData = {
   tagIds: string[];
   ingredients: {
     name: string;
-    ingredientId?: string;
     amount: number | undefined;
     unit: string | undefined;
     notes: string | undefined;
@@ -94,7 +92,6 @@ export function MealForm({
   submittingLabel,
   title,
 }: MealFormProps) {
-  const existingIngredients = useQuery(api.ingredients.list);
   const existingTags = useQuery(api.tags.list);
   const createTag = useMutation(api.tags.create);
 
@@ -129,15 +126,6 @@ export function MealForm({
   const [isReordering, setIsReordering] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const ingredientItems: ComboboxItem[] = (existingIngredients || [])
-    .filter(
-      (ing) =>
-        !mealIngredients.some(
-          (mi) => mi.ingredientId === ing._id || mi.name === ing.name,
-        ),
-    )
-    .map((ing) => ({ id: ing._id, label: ing.name }));
-
   const tagItems: ComboboxItem[] = (existingTags || [])
     .filter((tag) => !mealTags.some((mt) => mt.id === tag._id))
     .map((tag) => ({ id: tag._id, label: tag.name }));
@@ -148,19 +136,18 @@ export function MealForm({
     );
   };
 
-  const handleSelectIngredient = (item: ComboboxItem) => {
+  const addIngredient = () => {
     setMealIngredients((prev) => [
       ...prev,
-      { ingredientId: item.id, name: item.label, amount: 1, unit: "" },
+      { name: "", amount: 1, unit: "" },
     ]);
   };
 
-  const handleCreateIngredient = useCallback((ingredientName: string) => {
-    setMealIngredients((prev) => [
-      ...prev,
-      { name: ingredientName, amount: 1, unit: "" },
-    ]);
-  }, []);
+  const updateIngredientName = (index: number, name: string) => {
+    setMealIngredients((prev) =>
+      prev.map((ing, i) => (i === index ? { ...ing, name } : ing)),
+    );
+  };
 
   const handleSelectTag = (item: ComboboxItem) => {
     setMealTags((prev) => [...prev, { id: item.id, name: item.label }]);
@@ -253,13 +240,14 @@ export function MealForm({
         cookTime: cookSecs,
         mealTimes,
         tagIds: mealTags.map((t) => t.id),
-        ingredients: mealIngredients.map((ing) => ({
-          name: ing.name,
-          ingredientId: ing.ingredientId,
-          amount: ing.amount,
-          unit: ing.unit.trim() || undefined,
-          notes: ing.notes,
-        })),
+        ingredients: mealIngredients
+          .filter((ing) => ing.name.trim())
+          .map((ing) => ({
+            name: ing.name.trim(),
+            amount: ing.amount,
+            unit: ing.unit.trim() || undefined,
+            notes: ing.notes,
+          })),
         steps: steps.map((s) => {
           const mins = parseFloat(s.timerMinutes);
           return {
@@ -409,32 +397,43 @@ export function MealForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Ingredients Section */}
           <div>
-            <label className="block text-sm font-medium text-plum mb-2">
-              Ingredients
-            </label>
-            <Combobox
-              items={ingredientItems}
-              placeholder="Search or create ingredients..."
-              emptyText="No ingredients yet"
-              onSelect={handleSelectIngredient}
-              onCreate={handleCreateIngredient}
-              showOnlyWhenTyping
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-plum">
+                Ingredients
+              </label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={addIngredient}
+                className="text-plum"
+              >
+                <Plus className="size-4 mr-1" />
+                Add
+              </Button>
+            </div>
 
-            <div className="mt-4 divide-y divide-border">
+            <div className="divide-y divide-border">
               {mealIngredients.length === 0 ? (
                 <p className="text-center text-muted-foreground py-6">
-                  No ingredients added yet. Search or create above.
+                  No ingredients added yet.
                 </p>
               ) : (
                 mealIngredients.map((ing, index) => (
                   <div
-                    key={`${ing.ingredientId || ing.name}-${index}`}
+                    key={index}
                     className="flex items-center gap-3 py-2.5 group"
                   >
-                    <span className="font-medium text-foreground flex-1 min-w-0 truncate">
-                      {ing.name}
-                    </span>
+                    <input
+                      type="text"
+                      value={ing.name}
+                      onChange={(e) =>
+                        updateIngredientName(index, e.target.value)
+                      }
+                      className="flex-1 min-w-0 px-2 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm font-medium"
+                      placeholder="Ingredient name..."
+                      autoFocus={!ing.name}
+                    />
 
                     <QuantityInput
                       value={ing.amount}
