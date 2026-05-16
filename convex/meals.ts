@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireUser } from "./users";
+import { requireUser, getCurrentUser } from "./users";
 
 type Step = { text: string; timerSeconds?: number };
 
@@ -184,7 +184,8 @@ export const update = mutation({
 export const getCooking = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUser(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
     const cooking = user.currentlyCooking;
     if (!cooking) return null;
 
