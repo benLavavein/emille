@@ -141,9 +141,9 @@ export function HeroGreeting() {
   const firstName = user?.firstName || user?.username || "my friend";
 
   return (
-    <div className="flex items-center gap-2 mb-12">
-      <OtterIcon className="w-40 h-40 shrink-0 ml-20" />
-      <h2 className="text-3xl font-bold text-plum grow text-center">
+    <div className="flex items-center gap-2 mb-12 justify-around">
+      <OtterIcon className="w-40 h-40 shrink-0" />
+      <h2 className="text-3xl md:text-4xl font-bold text-plum grow text-center">
         {getDailyGreeting(firstName, user?.id || "")}
       </h2>
     </div>

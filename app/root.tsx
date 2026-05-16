@@ -11,7 +11,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { clerkMiddleware, rootAuthLoader } from '@clerk/react-router/server'
-import { ClerkProvider, SignIn, SignUp, SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/react-router";
+import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react-router";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Authenticated, ConvexReactClient, Unauthenticated, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../convex/_generated/api";

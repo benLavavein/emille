@@ -1,5 +1,4 @@
 import type { Route } from "./+types/home";
-import { SignedIn, SignedOut } from "@clerk/react-router";
 import { Link } from "react-router";
 import { HeroGreeting } from "~/components/dashboard/greeting";
 import { CookingCard } from "~/components/dashboard/cooking-card";
@@ -134,9 +133,7 @@ export default function Home() {
       {/* Hero Section */}
       <HeroGreeting />
 
-      <SignedIn>
-        <HomeDashboard />
-      </SignedIn>
+      <HomeDashboard />
     </div>
   );
 }
