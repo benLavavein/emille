@@ -12,7 +12,8 @@ function normalizeSteps(steps: (string | Step)[]): Step[] {
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUser(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
 
     const meals = await ctx.db
       .query("meals")
@@ -45,7 +46,8 @@ export const list = query({
 export const get = query({
   args: { id: v.id("meals") },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
     const meal = await ctx.db.get(args.id);
 
     if (!meal || meal.userId !== user._id) {

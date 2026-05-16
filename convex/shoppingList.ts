@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireUser } from "./users";
+import { requireUser, getCurrentUser } from "./users";
 
 function normalizeForSort(name: string): string {
   return name.trim().toLowerCase().replace(/e?s$/, "");
@@ -9,7 +9,8 @@ function normalizeForSort(name: string): string {
 export const get = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUser(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return { items: [] };
 
     const shoppingList = await ctx.db
       .query("shoppingLists")

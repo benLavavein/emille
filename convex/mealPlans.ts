@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
-import { requireUser } from "./users";
+import { requireUser, getCurrentUser } from "./users";
 
 async function mealWithTags(ctx: QueryCtx, mealId: Id<"meals">) {
   const meal = await ctx.db.get(mealId);
@@ -59,7 +59,8 @@ async function validateMealOwnership(
 export const getActive = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUser(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
     if (!user.activeMealPlanId) return null;
 
     const activePlan = await ctx.db.get(user.activeMealPlanId);
@@ -85,7 +86,8 @@ export const getActive = query({
 export const get = query({
   args: { id: v.id("mealPlans") },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
     const plan = await ctx.db.get(args.id);
 
     if (!plan || plan.userId !== user._id) {

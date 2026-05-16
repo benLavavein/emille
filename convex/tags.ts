@@ -1,12 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireUser } from "./users";
+import { requireUser, getCurrentUser } from "./users";
 
 // Get all tags for the current user
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUser(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
 
     return await ctx.db
       .query("tags")
