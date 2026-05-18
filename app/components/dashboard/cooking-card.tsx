@@ -59,18 +59,21 @@ export function CookingCard() {
 
   return (
     <div
-      className={`h-44 rounded-2xl border-2 bg-white/80 backdrop-blur-sm flex items-center px-6 gap-3`}
+      className={`h-44 rounded-2xl border-2 bg-white/80 backdrop-blur-sm flex items-center px-3 md:px-6 gap-3`}
     >
       <div className="overflow-visible shrink-0">
-        <CookingPotIcon active={isCooking} className="size-32 mb-6 text-plum" />
+        <CookingPotIcon
+          active={isCooking}
+          className="size-24 md:size-32 mb-6 text-plum"
+        />
       </div>
 
       {isCooking && mealForFade ? (
         <Link
           to={`/meals/${mealForFade.mealId}/cook`}
-          className="group block min-h-0 rounded-lg -m-1 p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-plum/35 focus-visible:ring-offset-2"
+          className="group block min-w-0 flex-1 overflow-hidden rounded-lg -m-1 p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-plum/35 focus-visible:ring-offset-2"
         >
-          <div className="flex items-baseline gap-6 min-w-0">
+          <div className="flex items-baseline gap-6 min-w-0 w-full">
             <h2 className="text-sm font-semibold text-plum shrink-0">
               Currently cooking
             </h2>
@@ -78,7 +81,7 @@ export function CookingCard() {
               Continue -&gt;
             </span>
           </div>
-          <p className="mt-0.5 min-w-0 text-plum font-medium text-lg truncate transition-transform duration-200 ease-out origin-left group-hover:scale-[1.06]">
+          <p className="mt-0.5 text-plum font-medium text-lg leading-tight line-clamp-2 transition-transform duration-200 ease-out origin-left group-hover:scale-[1.06]">
             {mealForFade.mealName}
           </p>
           <div className="flex items-center gap-4 mt-1 flex-wrap">

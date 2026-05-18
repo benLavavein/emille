@@ -38,8 +38,8 @@ export function CurrentMealPlan() {
   if (!activeMealPlan) {
     content = (
       <div className="text-mauve text-sm grid place-items-center h-75">
-        <div className="flex flex-col items-center gap-2 text-lg">
-          No active plan yet — want to get started?.
+        <div className="flex flex-col items-center gap-2 text-lg text-center">
+          No active plan yet — want to get started?
           <Link
             to="/meal-plan"
             className="text-plum hover:underline font-medium inline-flex items-center gap-1"
