@@ -77,6 +77,7 @@ export const create = mutation({
     description: v.optional(v.string()),
     prepTime: v.optional(v.number()),
     cookTime: v.optional(v.number()),
+    servings: v.optional(v.number()),
     mealTimes: v.array(v.string()),
     tagIds: v.array(v.id("tags")),
     ingredients: v.array(
@@ -111,6 +112,7 @@ export const create = mutation({
       description: args.description,
       prepTime: args.prepTime,
       cookTime: args.cookTime,
+      servings: args.servings,
       mealTimes: args.mealTimes,
       tagIds: args.tagIds,
       ingredients: args.ingredients,
@@ -128,6 +130,7 @@ export const update = mutation({
     description: v.optional(v.string()),
     prepTime: v.optional(v.number()),
     cookTime: v.optional(v.number()),
+    servings: v.optional(v.number()),
     mealTimes: v.optional(v.array(v.string())),
     tagIds: v.optional(v.array(v.id("tags"))),
     ingredients: v.optional(
@@ -173,6 +176,7 @@ export const update = mutation({
     if (args.description !== undefined) updates.description = args.description;
     if (args.prepTime !== undefined) updates.prepTime = args.prepTime;
     if (args.cookTime !== undefined) updates.cookTime = args.cookTime;
+    if (args.servings !== undefined) updates.servings = args.servings;
     if (args.mealTimes !== undefined) updates.mealTimes = args.mealTimes;
     if (args.tagIds !== undefined) updates.tagIds = args.tagIds;
     if (args.ingredients !== undefined) updates.ingredients = args.ingredients;

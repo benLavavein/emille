@@ -14,7 +14,7 @@ import {
   Trash,
 } from "lucide-react";
 import { QuantityInput } from "~/components/ui/quantity-input";
-import { MEAL_TIMES } from "~/lib/constants/meals";
+import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { Input } from "./ui/input";
 
@@ -55,6 +55,7 @@ export type MealFormData = {
   description?: string;
   prepTime?: number;
   cookTime?: number;
+  servings?: number;
   mealTimes: string[];
   tagIds: string[];
   ingredients: {
@@ -72,6 +73,7 @@ type MealFormProps = {
     description?: string;
     prepTime?: number;
     cookTime?: number;
+    servings?: number;
     mealTimes: string[];
     ingredients: MealIngredient[];
     tags: MealTag[];
@@ -105,6 +107,9 @@ export function MealForm({
   const [cookTimeMin, setCookTimeMin] = useState(
     initialData?.cookTime ? String(Math.round(initialData.cookTime / 60)) : "",
   );
+  const [servings, setServings] = useState(
+    initialData?.servings ? String(initialData.servings) : "",
+  );
   const [mealTimes, setMealTimes] = useState<string[]>(
     initialData?.mealTimes ?? [],
   );
@@ -124,6 +129,7 @@ export function MealForm({
   );
   const [newStep, setNewStep] = useState("");
   const [isReordering, setIsReordering] = useState(false);
+  const [isReorderingIngredients, setIsReorderingIngredients] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const tagItems: ComboboxItem[] = (existingTags || [])
@@ -137,10 +143,7 @@ export function MealForm({
   };
 
   const addIngredient = () => {
-    setMealIngredients((prev) => [
-      ...prev,
-      { name: "", amount: 1, unit: "" },
-    ]);
+    setMealIngredients((prev) => [...prev, { name: "", amount: 1, unit: "" }]);
   };
 
   const updateIngredientName = (index: number, name: string) => {
@@ -176,8 +179,86 @@ export function MealForm({
     );
   };
 
+  const normalizeUnit = (raw: string): string => {
+    const map: Record<string, string> = {
+      tablespoon: "tbsp",
+      tablespoons: "tbsp",
+      tbsp: "tbsp",
+      tbs: "tbsp",
+      teaspoon: "tsp",
+      teaspoons: "tsp",
+      tsp: "tsp",
+      cup: "cup",
+      cups: "cups",
+      ounce: "oz",
+      ounces: "oz",
+      oz: "oz",
+      pound: "lb",
+      pounds: "lbs",
+      lb: "lb",
+      lbs: "lbs",
+      gram: "g",
+      grams: "g",
+      g: "g",
+      kilogram: "kg",
+      kilograms: "kg",
+      kg: "kg",
+      milliliter: "ml",
+      milliliters: "ml",
+      ml: "ml",
+      liter: "l",
+      liters: "l",
+      l: "l",
+      fluid: "fl oz",
+      "fluid ounce": "fl oz",
+      "fluid ounces": "fl oz",
+      "fl oz": "fl oz",
+      pinch: "pinch",
+      pinches: "pinches",
+      clove: "clove",
+      cloves: "cloves",
+      slice: "slice",
+      slices: "slices",
+      piece: "piece",
+      pieces: "pieces",
+      can: "can",
+      cans: "cans",
+      package: "pkg",
+      packages: "pkg",
+      pkg: "pkg",
+      bunch: "bunch",
+      bunches: "bunches",
+    };
+    const normalized = map[raw.trim().toLowerCase()];
+    return normalized ?? raw;
+  };
+
+  const handleUnitBlur = (index: number, raw: string) => {
+    const normalized = normalizeUnit(raw);
+    if (normalized !== raw) {
+      updateIngredientUnit(index, normalized);
+    }
+  };
+
+  const updateIngredientNotes = (index: number, notes: string) => {
+    setMealIngredients((prev) =>
+      prev.map((ing, i) =>
+        i === index ? { ...ing, notes: notes || undefined } : ing,
+      ),
+    );
+  };
+
   const removeIngredient = (index: number) => {
     setMealIngredients((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const moveIngredient = (from: number, to: number) => {
+    setMealIngredients((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
   };
 
   const removeTag = (index: number) => {
@@ -233,11 +314,13 @@ export function MealForm({
         parseFloat(cookTimeMin) > 0
           ? Math.round(parseFloat(cookTimeMin) * 60)
           : undefined;
+      const servingsInt = parseInt(servings, 10);
       await onSubmit({
         name: name.trim(),
         description: description.trim() || undefined,
         prepTime: prepSecs,
         cookTime: cookSecs,
+        servings: servingsInt > 0 ? servingsInt : undefined,
         mealTimes,
         tagIds: mealTags.map((t) => t.id),
         ingredients: mealIngredients
@@ -303,7 +386,7 @@ export function MealForm({
           />
         </div>
 
-        {/* Prep & Cook Time */}
+        {/* Prep, Cook Time & Servings */}
         <div className="flex gap-4">
           <div className="flex-1">
             <label
@@ -337,6 +420,23 @@ export function MealForm({
               placeholder="30"
             />
           </div>
+          <div className="flex-1">
+            <label
+              htmlFor="servings"
+              className="block text-sm font-medium text-plum mb-2"
+            >
+              Servings
+            </label>
+            <Input
+              id="servings"
+              type="number"
+              min="1"
+              step="1"
+              value={servings}
+              onChange={(e) => setServings(e.target.value)}
+              placeholder="4"
+            />
+          </div>
         </div>
 
         {/* Meal Times */}
@@ -345,17 +445,21 @@ export function MealForm({
             When do you enjoy eating this?
           </label>
           <div className="flex gap-3">
-            {MEAL_TIMES.map((time) => (
-              <Button
-                key={time}
-                type="button"
-                variant={mealTimes.includes(time) ? "default" : "outline"}
-                onClick={() => toggleMealTime(time)}
-                className="capitalize"
-              >
-                {time}
-              </Button>
-            ))}
+            {MEAL_TIMES.map((time) => {
+              const Icon = MEAL_TIME_ICONS[time];
+              return (
+                <Button
+                  key={time}
+                  type="button"
+                  variant={mealTimes.includes(time) ? "default" : "outline"}
+                  onClick={() => toggleMealTime(time)}
+                  className="flex-1 gap-2"
+                >
+                  <Icon className="size-4 shrink-0" />
+                  {time}
+                </Button>
+              );
+            })}
           </div>
           {mealTimes.length === 0 && (
             <p className="text-sm text-muted-foreground mt-2">
@@ -397,20 +501,34 @@ export function MealForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Ingredients Section */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-plum">
+            <div className="flex items-center gap-3 mb-2">
+              <label className="block text-sm font-medium text-plum shrink-0">
                 Ingredients
               </label>
               <Button
                 type="button"
-                variant="ghost"
+                variant="default"
                 size="sm"
                 onClick={addIngredient}
-                className="text-plum"
+                className="flex-1"
               >
                 <Plus className="size-4 mr-1" />
-                Add
+                Add Ingredient
               </Button>
+              {mealIngredients.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setIsReorderingIngredients((v) => !v)}
+                  className={`flex items-center justify-center gap-1 text-xs shrink-0 w-16 transition-colors ${
+                    isReorderingIngredients
+                      ? "text-plum font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
+                  {isReorderingIngredients ? "Done" : "Reorder"}
+                </button>
+              )}
             </div>
 
             <div className="divide-y divide-border">
@@ -420,43 +538,79 @@ export function MealForm({
                 </p>
               ) : (
                 mealIngredients.map((ing, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 py-2.5 group"
-                  >
-                    <input
-                      type="text"
-                      value={ing.name}
-                      onChange={(e) =>
-                        updateIngredientName(index, e.target.value)
-                      }
-                      className="flex-1 min-w-0 px-2 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm font-medium"
-                      placeholder="Ingredient name..."
-                      autoFocus={!ing.name}
-                    />
+                  <div className="flex items-center gap-2" key={index}>
+                    <div className="flex flex-col py-2.5 gap-1 group grow">
+                      <div className="flex items-center gap-3">
+                        <AutoResizeTextarea
+                          value={ing.name}
+                          onChange={(e) =>
+                            updateIngredientName(index, e.target.value)
+                          }
+                          maxLength={100}
+                          rows={1}
+                          className="flex-1 min-w-0 px-2 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm font-medium resize-none overflow-hidden"
+                          placeholder="Ingredient name..."
+                          autoFocus={!ing.name}
+                        />
 
-                    <QuantityInput
-                      value={ing.amount}
-                      onChange={(val) => updateIngredientAmount(index, val)}
-                    />
+                        <QuantityInput
+                          value={ing.amount}
+                          onChange={(val) => updateIngredientAmount(index, val)}
+                        />
 
-                    <input
-                      type="text"
-                      value={ing.unit}
-                      onChange={(e) =>
-                        updateIngredientUnit(index, e.target.value)
-                      }
-                      className="w-24 px-2 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
-                      placeholder="cups, oz..."
-                    />
+                        <input
+                          type="text"
+                          value={ing.unit}
+                          onChange={(e) =>
+                            updateIngredientUnit(index, e.target.value)
+                          }
+                          onBlur={(e) => handleUnitBlur(index, e.target.value)}
+                          className="w-20 px-2 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
+                          placeholder="cups, oz..."
+                        />
+                      </div>
 
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeIngredient(index)}
-                    >
-                      <Trash className="size-4 text-red-600" />
-                    </Button>
+                      <input
+                        type="text"
+                        value={ing.notes ?? ""}
+                        onChange={(e) =>
+                          updateIngredientNotes(index, e.target.value)
+                        }
+                        className="px-2 py-0.5 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-xs text-muted-foreground"
+                        placeholder="Notes (optional)..."
+                      />
+                    </div>
+
+                    {isReorderingIngredients ? (
+                      <div className="flex flex-col items-center justify-center shrink-0 h-9 w-9 -space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => moveIngredient(index, index - 1)}
+                          disabled={index === 0}
+                          className="text-muted-foreground hover:text-foreground disabled:text-muted-foreground/20 transition-colors p-0.5"
+                        >
+                          <ChevronUp className="size-5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveIngredient(index, index + 1)}
+                          disabled={index === mealIngredients.length - 1}
+                          className="text-muted-foreground hover:text-foreground disabled:text-muted-foreground/20 transition-colors p-0.5"
+                        >
+                          <ChevronDown className="size-5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeIngredient(index)}
+                        className="bg-red-600/10 hover:bg-red-600/20"
+                      >
+                        <Trash className="size-5 text-red-600/70" />
+                      </Button>
+                    )}
                   </div>
                 ))
               )}
@@ -473,13 +627,13 @@ export function MealForm({
                 <button
                   type="button"
                   onClick={() => setIsReordering((v) => !v)}
-                  className={`flex items-center gap-1 text-xs transition-colors ${
+                  className={`flex items-center justify-center gap-1 text-xs w-16 transition-colors ${
                     isReordering
                       ? "text-plum font-medium"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
                   {isReordering ? "Done" : "Reorder"}
                 </button>
               )}
@@ -502,26 +656,6 @@ export function MealForm({
                       }}
                       className="flex items-center gap-2 py-2.5 group"
                     >
-                      {isReordering && (
-                        <div className="flex flex-col shrink-0 -space-y-1">
-                          <button
-                            type="button"
-                            onClick={() => moveStep(index, index - 1)}
-                            disabled={index === 0}
-                            className="text-muted-foreground hover:text-foreground disabled:text-muted-foreground/20 transition-colors p-0.5"
-                          >
-                            <ChevronUp className="h-5 w-5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveStep(index, index + 1)}
-                            disabled={index === steps.length - 1}
-                            className="text-muted-foreground hover:text-foreground disabled:text-muted-foreground/20 transition-colors p-0.5"
-                          >
-                            <ChevronDown className="h-5 w-5" />
-                          </button>
-                        </div>
-                      )}
                       <span className="text-sm font-medium text-muted-foreground w-5 shrink-0">
                         {index + 1}.
                       </span>
@@ -548,13 +682,34 @@ export function MealForm({
                         />
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => removeStep(index)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                      {isReordering ? (
+                        <div className="flex flex-col shrink-0 -space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => moveStep(index, index - 1)}
+                            disabled={index === 0}
+                            className="text-muted-foreground hover:text-foreground disabled:text-muted-foreground/20 transition-colors p-0.5"
+                          >
+                            <ChevronUp className="h-5 w-5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveStep(index, index + 1)}
+                            disabled={index === steps.length - 1}
+                            className="text-muted-foreground hover:text-foreground disabled:text-muted-foreground/20 transition-colors p-0.5"
+                          >
+                            <ChevronDown className="h-5 w-5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => removeStep(index)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
                     </motion.div>
                   ))}
                 </AnimatePresence>

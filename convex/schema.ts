@@ -41,6 +41,7 @@ export default defineSchema({
     cookTime: v.optional(v.number()),
     mealTimes: v.array(v.string()), // ["breakfast", "lunch", "dinner"]
     tagIds: v.array(v.id("tags")), // Tags for this meal
+    servings: v.optional(v.number()),
     ingredients: v.array(
       v.object({
         name: v.string(),

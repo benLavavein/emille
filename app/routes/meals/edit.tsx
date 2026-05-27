@@ -57,6 +57,7 @@ export default function EditMealPage() {
     description: meal.description,
     prepTime: meal.prepTime,
     cookTime: meal.cookTime,
+    servings: meal.servings,
     mealTimes: meal.mealTimes || [],
     ingredients: meal.ingredients.map((ing: any) => ({
       name: ing.name,
@@ -78,6 +79,7 @@ export default function EditMealPage() {
       description: data.description,
       prepTime: data.prepTime,
       cookTime: data.cookTime,
+      servings: data.servings,
       mealTimes: data.mealTimes,
       tagIds: data.tagIds as any,
       ingredients: data.ingredients.map((ing) => ({
