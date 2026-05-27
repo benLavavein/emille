@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Carrot,
   ListOrdered,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "~/components/ui/button";
@@ -402,30 +404,34 @@ export default function CookPage() {
         <button
           onClick={goBack}
           disabled={currentStep === 0}
-          className="absolute inset-x-0 top-0 h-1/2 z-10 cursor-pointer disabled:cursor-default"
+          className="group absolute inset-y-0 left-0 w-1/2 z-10 cursor-pointer disabled:cursor-default flex items-center justify-start pl-3"
           aria-label="Previous step"
-        />
+        >
+          <ChevronLeft className="size-7 text-plum/50 transition-opacity group-disabled:opacity-0" />
+        </button>
         <button
           onClick={goForward}
           disabled={currentStep === steps.length - 1}
-          className="absolute inset-x-0 bottom-0 h-1/2 z-10 cursor-pointer disabled:cursor-default"
+          className="group absolute inset-y-0 right-0 w-1/2 z-10 cursor-pointer disabled:cursor-default flex items-center justify-end pr-3"
           aria-label="Next step"
-        />
+        >
+          <ChevronRight className="size-7 text-plum/50 transition-opacity group-disabled:opacity-0" />
+        </button>
 
         <AnimatePresence mode="wait" initial={false} custom={direction}>
           <motion.div
             key={currentStep}
             custom={direction}
             variants={{
-              enter: (d: number) => ({ opacity: 0, y: d >= 0 ? 40 : -40 }),
+              enter: (d: number) => ({ opacity: 0, x: d >= 0 ? 40 : -40 }),
               center: {
                 opacity: 1,
-                y: 0,
+                x: 0,
                 transition: { type: "spring", stiffness: 500, damping: 38 },
               },
               exit: (d: number) => ({
                 opacity: 0,
-                y: d >= 0 ? -40 : 40,
+                x: d >= 0 ? -40 : 40,
                 transition: { duration: 0.1 },
               }),
             }}
@@ -464,17 +470,17 @@ export default function CookPage() {
           ))}
         </div>
         <p className="text-center text-xs text-mauve/50 mt-2">
-          Tap top half to go back · Tap bottom half to go forward
+          Tap left side to go back · Tap right side to go forward
         </p>
       </div>
 
       {/* Floating toggle button */}
       <button
         onClick={() => setShowIngredients(true)}
-        className="fixed top-20 right-4 z-55 bg-white/90 backdrop-blur-sm border border-blush/50 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow text-plum"
+        className="fixed bottom-20 right-4 z-55 bg-orange-400/20 border-orange-400/20 rounded-xl p-8 shadow-sm hover:bg-orange-400/30 transition-colors text-orange-400/50 hover:text-orange-400/70"
         title="View ingredients"
       >
-        <Carrot className="size-5" />
+        <Carrot className="size-7" />
       </button>
 
       {/* Ingredients overlay */}
