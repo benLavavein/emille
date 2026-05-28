@@ -119,12 +119,13 @@ export function MealForm({
   const [mealTags, setMealTags] = useState<MealTag[]>(initialData?.tags ?? []);
   const nextStepId = useRef((initialData?.steps?.length ?? 0) + 1);
   const [steps, setSteps] = useState<
-    { id: number; text: string; timerMinutes: string }[]
+    { id: number; text: string; timerMinutes: string; timerOpen: boolean }[]
   >(() =>
     (initialData?.steps ?? []).map((s, i) => ({
       id: i + 1,
       text: s.text,
       timerMinutes: s.timerSeconds ? String(s.timerSeconds / 60) : "",
+      timerOpen: !!s.timerSeconds,
     })),
   );
   const [newStep, setNewStep] = useState("");
@@ -270,9 +271,19 @@ export function MealForm({
     const id = nextStepId.current++;
     setSteps((prev) => [
       ...prev,
-      { id, text: newStep.trim(), timerMinutes: "" },
+      { id, text: newStep.trim(), timerMinutes: "", timerOpen: false },
     ]);
     setNewStep("");
+  };
+
+  const toggleStepTimer = (index: number) => {
+    setSteps((prev) =>
+      prev.map((step, i) =>
+        i === index
+          ? { ...step, timerOpen: !step.timerOpen, timerMinutes: !step.timerOpen ? step.timerMinutes : "" }
+          : step,
+      ),
+    );
   };
 
   const updateStep = (index: number, text: string) => {
@@ -539,25 +550,24 @@ export function MealForm({
               ) : (
                 mealIngredients.map((ing, index) => (
                   <div className="flex items-center gap-2" key={index}>
-                    <div className="flex flex-col py-2.5 gap-1 group grow">
-                      <div className="flex items-center gap-3">
-                        <AutoResizeTextarea
-                          value={ing.name}
-                          onChange={(e) =>
-                            updateIngredientName(index, e.target.value)
-                          }
-                          maxLength={100}
-                          rows={1}
-                          className="flex-1 min-w-0 px-2 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm font-medium resize-none overflow-hidden"
-                          placeholder="Ingredient name..."
-                          autoFocus={!ing.name}
-                        />
+                    <div className="flex flex-col py-2.5 gap-0.5 group grow min-w-0">
+                      <AutoResizeTextarea
+                        value={ing.name}
+                        onChange={(e) =>
+                          updateIngredientName(index, e.target.value)
+                        }
+                        maxLength={100}
+                        rows={1}
+                        className="w-full px-2 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm font-medium resize-none overflow-hidden"
+                        placeholder="Ingredient name..."
+                        autoFocus={!ing.name}
+                      />
 
+                      <div className="flex items-center gap-2 px-1">
                         <QuantityInput
                           value={ing.amount}
                           onChange={(val) => updateIngredientAmount(index, val)}
                         />
-
                         <input
                           type="text"
                           value={ing.unit}
@@ -565,7 +575,7 @@ export function MealForm({
                             updateIngredientUnit(index, e.target.value)
                           }
                           onBlur={(e) => handleUnitBlur(index, e.target.value)}
-                          className="w-20 px-2 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
+                          className="w-20 px-2 py-0.5 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-sm"
                           placeholder="cups, oz..."
                         />
                       </div>
@@ -654,43 +664,63 @@ export function MealForm({
                         stiffness: 500,
                         damping: 35,
                       }}
-                      className="flex items-center gap-2 py-2.5 group"
+                      className="flex items-start gap-2 py-2.5 group"
                     >
-                      <span className="text-sm font-medium text-muted-foreground w-5 shrink-0">
-                        {index + 1}.
-                      </span>
-
-                      <AutoResizeTextarea
-                        value={step.text}
-                        onChange={(e) => updateStep(index, e.target.value)}
-                        rows={1}
-                        className="flex-1 px-2 py-1 rounded-lg border border-transparent bg-transparent focus:outline-none focus:border-border focus:bg-background text-sm resize-none overflow-hidden"
-                      />
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Timer className="h-3.5 w-3.5 text-muted-foreground" />
-                        <input
-                          type="number"
-                          value={step.timerMinutes}
-                          onChange={(e) =>
-                            updateStepTimer(index, e.target.value)
-                          }
-                          placeholder="min"
-                          min="0"
-                          step="0.5"
-                          className="w-14 px-1.5 py-1 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-xs text-center"
-                        />
+                      {/* Step number + clock toggle */}
+                      <div className="flex flex-col items-center shrink-0 w-5 gap-1 pt-1">
+                        <span className="text-sm font-medium text-muted-foreground leading-none">
+                          {index + 1}.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleStepTimer(index)}
+                          title={step.timerOpen ? "Remove timer" : "Add timer"}
+                          className={`transition-colors ${
+                            step.timerOpen
+                              ? "text-plum"
+                              : "text-muted-foreground/40 hover:text-muted-foreground"
+                          }`}
+                        >
+                          <Timer className="h-3.5 w-3.5" />
+                        </button>
                       </div>
 
+                      {/* Step text + optional timer */}
+                      <div className="flex flex-col flex-1 min-w-0 gap-1">
+                        <AutoResizeTextarea
+                          value={step.text}
+                          onChange={(e) => updateStep(index, e.target.value)}
+                          rows={1}
+                          className="w-full px-2 py-1 rounded-lg border border-transparent bg-transparent focus:outline-none focus:border-border focus:bg-background text-sm resize-none overflow-hidden"
+                        />
+                        {step.timerOpen && (
+                          <div className="flex items-center gap-1.5 px-2">
+                            <Timer className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <input
+                              type="number"
+                              value={step.timerMinutes}
+                              onChange={(e) =>
+                                updateStepTimer(index, e.target.value)
+                              }
+                              placeholder="minutes"
+                              min="0"
+                              step="0.5"
+                              className="w-20 px-1.5 py-0.5 rounded-lg border border-transparent bg-transparent focus:border-border focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Trash or reorder arrows */}
                       {isReordering ? (
-                        <div className="flex flex-col shrink-0 -space-y-1">
+                        <div className="flex flex-col items-center justify-center shrink-0 h-9 w-9 -space-y-1">
                           <button
                             type="button"
                             onClick={() => moveStep(index, index - 1)}
                             disabled={index === 0}
                             className="text-muted-foreground hover:text-foreground disabled:text-muted-foreground/20 transition-colors p-0.5"
                           >
-                            <ChevronUp className="h-5 w-5" />
+                            <ChevronUp className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
@@ -698,17 +728,19 @@ export function MealForm({
                             disabled={index === steps.length - 1}
                             className="text-muted-foreground hover:text-foreground disabled:text-muted-foreground/20 transition-colors p-0.5"
                           >
-                            <ChevronDown className="h-5 w-5" />
+                            <ChevronDown className="h-4 w-4" />
                           </button>
                         </div>
                       ) : (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="icon"
                           onClick={() => removeStep(index)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1"
+                          className="shrink-0 bg-red-600/10 hover:bg-red-600/20 h-9 w-9"
                         >
-                          <X className="h-4 w-4" />
-                        </button>
+                          <Trash className="size-4 text-red-600/70" />
+                        </Button>
                       )}
                     </motion.div>
                   ))}

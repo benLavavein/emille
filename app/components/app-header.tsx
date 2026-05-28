@@ -20,6 +20,7 @@ import {
   SheetTitle,
 } from "~/components/ui/sheet";
 import { VisuallyHidden } from "radix-ui";
+import { Button } from "./ui/button";
 
 export const navLinks = [
   { href: "/", label: "Home", icon: Home },
@@ -100,13 +101,15 @@ function MobileHeader() {
               <span className="text-lg font-medium text-plum truncate">
                 {firstName}
               </span>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-mauve"
                 onClick={() => signOut()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-mauve hover:text-plum rounded-lg hover:bg-blush/30 transition-colors shrink-0"
               >
-                <LogOut className="size-3.5" />
+                <LogOut className="size-4" />
                 Sign out
-              </button>
+              </Button>
             </div>
           </div>
         </SheetContent>
