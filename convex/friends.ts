@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { customAlphabet } from "nanoid";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireUser } from "./users";
@@ -95,10 +95,10 @@ export const sendFriendRequest = mutation({
       .unique();
 
     if (!target) {
-      throw new Error("No user found with that friend code.");
+      throw new ConvexError({ code: "NOT_FOUND" });
     }
     if (target._id === me._id) {
-      throw new Error("You can't add yourself as a friend.");
+      throw new ConvexError({ code: "SELF_ADD" });
     }
 
     // Already friends?
@@ -109,7 +109,7 @@ export const sendFriendRequest = mutation({
       )
       .unique();
     if (alreadyFriends) {
-      throw new Error("You are already friends with this user.");
+      return { result: "already_friends" as const };
     }
 
     // Pending request from me to them?
@@ -120,7 +120,7 @@ export const sendFriendRequest = mutation({
       )
       .unique();
     if (existingOutgoing) {
-      throw new Error("You already sent a request to this user.");
+      return { result: "already_requested" as const };
     }
 
     // They already sent me a request? Auto-accept.

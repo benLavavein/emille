@@ -69,7 +69,7 @@ export function QueueHeader({
             className="shrink-0 rounded-lg bg-plum p-2 text-white transition-colors hover:bg-plum/90"
             title={addLabel}
           >
-            <Plus className="size-4" />
+            <Plus className="size-5" />
           </Link>
         ) : null}
       </div>
@@ -111,7 +111,7 @@ export const QueueBody = ({
 }: React.ComponentProps<"div">) => (
   <div
     className={cn(
-      "flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-width:thin] bg-white/80",
+      "flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden scrollbar-thin bg-white/80",
       className,
     )}
     {...props}

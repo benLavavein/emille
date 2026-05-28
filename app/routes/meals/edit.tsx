@@ -2,7 +2,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useSetBackUrl } from "~/lib/back-button";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { MealForm, type MealFormData } from "~/components/meal-form";
+import { MealForm, type MealFormData } from "~/forms/meal";
 
 export function meta() {
   return [
@@ -69,7 +69,9 @@ export default function EditMealPage() {
       id: tag._id,
       name: tag.name,
     })),
-    steps: meal.steps || [],
+    steps: (meal.steps || []).map((s: any) =>
+      typeof s === "string" ? { text: s } : { text: s.text, timerSeconds: s.timerSeconds },
+    ),
   };
 
   const handleSubmit = async (data: MealFormData) => {
@@ -99,7 +101,6 @@ export default function EditMealPage() {
       onSubmit={handleSubmit}
       onCancel={() => navigate(`/meals/${mealId}`)}
       title="Edit Meal"
-      backLabel="Cancel editing"
       submitLabel="Save Changes"
       submittingLabel="Saving..."
     />

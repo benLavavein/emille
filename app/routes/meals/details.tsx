@@ -24,6 +24,7 @@ import {
   Clock,
   AlertTriangle,
   CookingPot,
+  X,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
@@ -154,14 +155,11 @@ export default function MealDetailsPage() {
         </div>
       )}
 
-      <div className="shrink-0 max-w-5xl mx-auto w-full px-4 pt-6 md:px-8 md:pt-8">
+      <div className="shrink-0 max-w-5xl mx-auto w-full p-4 pt-2 md:px-8 md:pt-8">
         <div className="mb-6 md:mb-8">
-          <div className="flex items-start justify-between gap-3">
-            <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
-
-            <div className="flex items-center gap-2 shrink-0 ml-4">
-              {!isCookingThisMeal && <CookButton mealId={mealId} />}
-
+          {/* Mobile header */}
+          <div className="md:hidden">
+            <div className="flex items-center justify-end gap-0.5">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -184,11 +182,54 @@ export default function MealDetailsPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/meals")}
+              >
+                <X className="size-5" />
+              </Button>
+            </div>
+            <h1 className="text-3xl font-bold text-plum mb-3">{meal.name}</h1>
+            {!isCookingThisMeal && <CookButton mealId={mealId} />}
+          </div>
+
+          {/* Desktop header */}
+          <div className="hidden md:block">
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-2xl font-bold text-plum">{meal.name}</h1>
+
+              <div className="flex items-center gap-2 shrink-0 ml-4">
+                {!isCookingThisMeal && <CookButton mealId={mealId} />}
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="size-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => navigate(`/meals/${mealId}/edit`)}
+                    >
+                      <Pencil className="size-5 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="size-5 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
 
           {meal.description && (
-            <p className="text-mauve mt-4 text-sm line-clamp-2">
+            <p className="text-mauve mt-4 text-sm">
               {meal.description}
             </p>
           )}
@@ -291,9 +332,7 @@ export default function MealDetailsPage() {
                       .join(" ") || "—"}
                   </span>
                   <div className="flex flex-col">
-                    <span className="font-medium text-plum">
-                      {ing.name}
-                    </span>
+                    <span className="font-medium text-plum">{ing.name}</span>
                     {ing.notes && (
                       <span className="text-mauve/70 text-xs">
                         ({ing.notes})

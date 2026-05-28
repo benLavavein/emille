@@ -25,6 +25,7 @@ body {
   @apply bg-linear-to-br from-peach/30 to-blush/20 min-h-screen;
 }
 
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
