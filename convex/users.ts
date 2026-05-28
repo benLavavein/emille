@@ -1,5 +1,26 @@
 import { v } from "convex/values";
-import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { customAlphabet } from "nanoid";
+import {
+  mutation,
+  query,
+  type QueryCtx,
+  type MutationCtx,
+} from "./_generated/server";
+
+const FRIEND_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const generateCode = customAlphabet(FRIEND_CODE_ALPHABET, 8);
+
+async function generateUniqueFriendCode(ctx: MutationCtx): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = generateCode();
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_friend_code", (q) => q.eq("friendCode", code))
+      .unique();
+    if (!existing) return code;
+  }
+  throw new Error("Could not generate a unique friend code after 10 attempts");
+}
 
 // Helper to get the current authenticated user
 export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
@@ -35,7 +56,7 @@ export async function requireUser(ctx: QueryCtx | MutationCtx) {
     // This can happen on first sign-in before upsertUser is called
     throw new Error("User not found - please refresh the page");
   }
-  
+
   return user;
 }
 
@@ -63,10 +84,12 @@ export const upsertUser = mutation({
     }
 
     // Create new user
+    const friendCode = await generateUniqueFriendCode(ctx);
     const userId = await ctx.db.insert("users", {
       clerkId: identity.subject,
       email: identity.email || "",
       name: identity.name,
+      friendCode,
     });
 
     return userId;

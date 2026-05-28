@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   LogOut,
   ChevronLeft,
+  Users,
 } from "lucide-react";
 import { OtterIcon } from "~/components/icons/otter";
 import { useBackButton } from "~/lib/back-button";
@@ -28,6 +29,7 @@ export const navLinks = [
   { href: "/meal-plan", label: "Meal plan", icon: Calendar },
   { href: "/stores", label: "Stores", icon: Store },
   { href: "/shopping-list", label: "Shopping List", icon: ShoppingCart },
+  { href: "/friends", label: "Friends", icon: Users },
 ];
 
 function MobileHeader() {

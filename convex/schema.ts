@@ -7,6 +7,8 @@ export default defineSchema({
     clerkId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
+    // Optional until backfill migration has run; becomes the unique 8-char code
+    friendCode: v.optional(v.string()),
     defaultStoreId: v.optional(v.id("groceryStores")),
     activeMealPlanId: v.optional(v.id("mealPlans")),
     currentlyCooking: v.optional(
@@ -21,7 +23,29 @@ export default defineSchema({
         ),
       })
     ),
-  }).index("by_clerk_id", ["clerkId"]),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_friend_code", ["friendCode"]),
+
+  // Friend requests between users
+  friendRequests: defineTable({
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    // Only "pending" requests are stored; accepted → friendship row; declined → deleted
+    status: v.literal("pending"),
+  })
+    .index("by_to_user", ["toUserId"])
+    .index("by_from_user", ["fromUserId"])
+    .index("by_from_and_to", ["fromUserId", "toUserId"]),
+
+  // Accepted friendships – two symmetric rows per friendship for easy querying
+  friendships: defineTable({
+    userId: v.id("users"),
+    friendId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_friend", ["userId", "friendId"]),
 
   // Tags for categorizing meals
   tags: defineTable({
