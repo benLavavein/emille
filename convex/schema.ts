@@ -7,8 +7,7 @@ export default defineSchema({
     clerkId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
-    // Optional until backfill migration has run; becomes the unique 8-char code
-    friendCode: v.optional(v.string()),
+    friendCode: v.string(),
     defaultStoreId: v.optional(v.id("groceryStores")),
     activeMealPlanId: v.optional(v.id("mealPlans")),
     currentlyCooking: v.optional(

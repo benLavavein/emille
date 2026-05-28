@@ -1,11 +1,6 @@
 import { v } from "convex/values";
 import { customAlphabet } from "nanoid";
-import {
-  mutation,
-  query,
-  internalMutation,
-  MutationCtx,
-} from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireUser } from "./users";
 
 const FRIEND_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -26,26 +21,6 @@ async function generateUniqueFriendCode(ctx: MutationCtx): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// Backfill migration – call once from the Convex dashboard to assign codes to
-// all existing users who don't have one yet.
-// ---------------------------------------------------------------------------
-export const backfillFriendCodes = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
-    let updated = 0;
-    for (const user of users) {
-      if (!user.friendCode) {
-        const code = await generateUniqueFriendCode(ctx);
-        await ctx.db.patch(user._id, { friendCode: code });
-        updated++;
-      }
-    }
-    return { updated };
-  },
-});
-
-// ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
 
@@ -53,7 +28,7 @@ export const getMyFriendCode = query({
   args: {},
   handler: async (ctx) => {
     const user = await requireUser(ctx);
-    return user.friendCode ?? null;
+    return user.friendCode;
   },
 });
 
@@ -73,9 +48,9 @@ export const getIncomingRequests = query({
           requestId: req._id,
           fromUserId: req.fromUserId,
           fromName: sender?.name ?? sender?.email ?? "Unknown",
-          fromFriendCode: sender?.friendCode ?? null,
+          fromFriendCode: sender?.friendCode,
         };
-      })
+      }),
     );
   },
 });
@@ -96,9 +71,9 @@ export const getFriends = query({
           friendshipId: row._id,
           friendId: row.friendId,
           name: friend?.name ?? friend?.email ?? "Unknown",
-          friendCode: friend?.friendCode ?? null,
+          friendCode: friend?.friendCode,
         };
-      })
+      }),
     );
   },
 });
@@ -130,7 +105,7 @@ export const sendFriendRequest = mutation({
     const alreadyFriends = await ctx.db
       .query("friendships")
       .withIndex("by_user_and_friend", (q) =>
-        q.eq("userId", me._id).eq("friendId", target._id)
+        q.eq("userId", me._id).eq("friendId", target._id),
       )
       .unique();
     if (alreadyFriends) {
@@ -141,7 +116,7 @@ export const sendFriendRequest = mutation({
     const existingOutgoing = await ctx.db
       .query("friendRequests")
       .withIndex("by_from_and_to", (q) =>
-        q.eq("fromUserId", me._id).eq("toUserId", target._id)
+        q.eq("fromUserId", me._id).eq("toUserId", target._id),
       )
       .unique();
     if (existingOutgoing) {
@@ -152,7 +127,7 @@ export const sendFriendRequest = mutation({
     const incomingFromThem = await ctx.db
       .query("friendRequests")
       .withIndex("by_from_and_to", (q) =>
-        q.eq("fromUserId", target._id).eq("toUserId", me._id)
+        q.eq("fromUserId", target._id).eq("toUserId", me._id),
       )
       .unique();
     if (incomingFromThem) {

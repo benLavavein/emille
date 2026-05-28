@@ -14,12 +14,24 @@ import { clerkMiddleware, rootAuthLoader } from '@clerk/react-router/server'
 import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react-router";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Authenticated, ConvexReactClient, Unauthenticated, useMutation, useConvexAuth } from "convex/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ConvexQueryClient } from "@convex-dev/react-query";
 import { api } from "../convex/_generated/api";
 import { AppHeader, DesktopSidebar } from "./components/app-header";
 import { BackButtonProvider } from "./lib/back-button";
 import { OtterIcon } from "./components/icons/otter";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+const convexQueryClient = new ConvexQueryClient(convex);
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      queryKeyHashFn: convexQueryClient.hashFn(),
+      queryFn: convexQueryClient.queryFn(),
+    },
+  },
+});
+convexQueryClient.connect(queryClient);
 
 // Component that syncs the Clerk user to Convex
 function UserSync() {
@@ -142,6 +154,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <ClerkProvider loaderData={loaderData}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        <QueryClientProvider client={queryClient}>
         <main>
           <Unauthenticated>
             <AuthScreen />
@@ -163,6 +176,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
             </BackButtonProvider>
           </Authenticated>
         </main>
+        </QueryClientProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );

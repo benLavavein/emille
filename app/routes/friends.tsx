@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { Suspense, useState } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -13,14 +15,38 @@ export function meta() {
   ];
 }
 
-function FriendCodeDisplay({ code }: { code: string }) {
+// ---------------------------------------------------------------------------
+// Skeletons
+// ---------------------------------------------------------------------------
+
+function CardSkeleton({ rows = 1 }: { rows?: number }) {
+  return (
+    <div className="animate-pulse flex flex-col gap-2">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="h-14 rounded-xl bg-blush/20" />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Friend code display
+// ---------------------------------------------------------------------------
+
+function FriendCodeDisplay() {
+  const { data: friendCode } = useSuspenseQuery(
+    convexQuery(api.friends.getMyFriendCode, {})
+  );
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(code);
+    if (!friendCode) return;
+    await navigator.clipboard.writeText(friendCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  if (!friendCode) return null;
 
   return (
     <div className="flex items-center gap-3">
@@ -29,7 +55,7 @@ function FriendCodeDisplay({ code }: { code: string }) {
           Your code
         </span>
         <span className="text-lg font-mono font-bold text-plum tracking-widest">
-          {code}
+          {friendCode}
         </span>
       </div>
       <button
@@ -46,6 +72,10 @@ function FriendCodeDisplay({ code }: { code: string }) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Send request
+// ---------------------------------------------------------------------------
 
 function SendRequestRow() {
   const [code, setCode] = useState("");
@@ -64,7 +94,7 @@ function SendRequestRow() {
       const { result } = await sendRequest({ friendCode: trimmed });
       setCode("");
       setSuccess(
-        result === "accepted" ? "You're now friends!" : "Friend request sent!",
+        result === "accepted" ? "You're now friends!" : "Friend request sent!"
       );
       setTimeout(() => setSuccess(null), 3000);
     } catch (e: unknown) {
@@ -104,131 +134,115 @@ function SendRequestRow() {
   );
 }
 
-function IncomingRequests() {
-  const requests = useQuery(api.friends.getIncomingRequests);
+// ---------------------------------------------------------------------------
+// Incoming requests
+// ---------------------------------------------------------------------------
+
+function IncomingRequestsList() {
+  const { data: requests } = useSuspenseQuery(
+    convexQuery(api.friends.getIncomingRequests, {})
+  );
   const accept = useMutation(api.friends.acceptFriendRequest);
   const decline = useMutation(api.friends.declineFriendRequest);
 
-  if (requests === undefined) {
+  if (requests.length === 0) {
     return (
-      <div className="animate-pulse space-y-2">
-        {[0, 1].map((i) => (
-          <div key={i} className="h-14 rounded-xl bg-blush/20" />
-        ))}
+      <div className="bg-white/40 backdrop-blur-sm border border-blush/30 rounded-2xl py-8 flex items-center justify-center">
+        <p className="text-mauve/60 text-sm">
+          Incoming requests will show up here
+        </p>
       </div>
     );
   }
 
   return (
-    <section>
-      <h2 className="text-sm font-semibold text-mauve uppercase tracking-wider mb-3">
-        Incoming Requests
-      </h2>
-      {requests.length === 0 ? (
-        <div className="bg-white/40 backdrop-blur-sm border border-blush/30 rounded-2xl py-8 flex items-center justify-center">
-          <p className="text-mauve/60 text-sm">
-            Incoming requests will show up here
-          </p>
-        </div>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {requests.map((req) => (
-            <li
-              key={req.requestId}
-              className="flex items-center justify-between gap-3 bg-white/60 backdrop-blur-sm border border-blush/40 rounded-xl px-4 py-3"
+    <ul className="flex flex-col gap-2">
+      {requests.map((req) => (
+        <li
+          key={req.requestId}
+          className="flex items-center justify-between gap-3 bg-white/60 backdrop-blur-sm border border-blush/40 rounded-xl px-4 py-3"
+        >
+          <div className="flex flex-col min-w-0">
+            <span className="font-medium text-plum truncate">{req.fromName}</span>
+            {req.fromFriendCode && (
+              <span className="text-xs font-mono text-mauve tracking-wider">
+                {req.fromFriendCode}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button
+              size="sm"
+              onClick={() => accept({ requestId: req.requestId })}
             >
-              <div className="flex flex-col min-w-0">
-                <span className="font-medium text-plum truncate">
-                  {req.fromName}
-                </span>
-                {req.fromFriendCode && (
-                  <span className="text-xs font-mono text-mauve tracking-wider">
-                    {req.fromFriendCode}
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <Button
-                  size="sm"
-                  onClick={() => accept({ requestId: req.requestId })}
-                >
-                  Accept
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-mauve hover:text-plum"
-                  onClick={() => decline({ requestId: req.requestId })}
-                >
-                  Decline
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+              Accept
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-mauve hover:text-plum"
+              onClick={() => decline({ requestId: req.requestId })}
+            >
+              Decline
+            </Button>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Friends list
+// ---------------------------------------------------------------------------
 
 function FriendsList() {
-  const friends = useQuery(api.friends.getFriends);
+  const { data: friends } = useSuspenseQuery(
+    convexQuery(api.friends.getFriends, {})
+  );
 
-  if (friends === undefined) {
+  if (friends.length === 0) {
     return (
-      <div className="animate-pulse space-y-2">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-14 rounded-xl bg-blush/20" />
-        ))}
+      <div className="bg-white/40 backdrop-blur-sm border border-blush/30 rounded-2xl py-16 flex flex-col items-center justify-center gap-4">
+        <OtterIcon className="w-24 h-24 text-plum/40" />
+        <p className="text-mauve/60 text-sm text-center">
+          Looks like no one&apos;s here.
+          <br />
+          I&apos;ll be your friend!
+        </p>
       </div>
     );
   }
 
   return (
-    <section className="flex-1">
-      <h2 className="text-sm font-semibold text-mauve uppercase tracking-wider mb-3">
-        Friends
-      </h2>
-      {friends.length === 0 ? (
-        <div className="bg-white/40 backdrop-blur-sm border border-blush/30 rounded-2xl py-16 flex flex-col items-center justify-center gap-4">
-          <OtterIcon className="w-24 h-24 text-plum/40" />
-          <p className="text-mauve/60 text-sm text-center">
-            Looks like no one&apos;s here yet.
-            <br />
-            I&apos;ll be your friend!
-          </p>
-        </div>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {friends.map((friend) => (
-            <li
-              key={friend.friendshipId}
-              className="flex items-center gap-3 bg-white/60 backdrop-blur-sm border border-blush/40 rounded-xl px-4 py-3"
-            >
-              <div className="size-9 rounded-full bg-plum/10 flex items-center justify-center shrink-0">
-                <Users className="size-4 text-plum" />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="font-medium text-plum truncate">
-                  {friend.name}
-                </span>
-                {friend.friendCode && (
-                  <span className="text-xs font-mono text-mauve tracking-wider">
-                    {friend.friendCode}
-                  </span>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <ul className="flex flex-col gap-2">
+      {friends.map((friend) => (
+        <li
+          key={friend.friendshipId}
+          className="flex items-center gap-3 bg-white/60 backdrop-blur-sm border border-blush/40 rounded-xl px-4 py-3"
+        >
+          <div className="size-9 rounded-full bg-plum/10 flex items-center justify-center shrink-0">
+            <Users className="size-4 text-plum" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="font-medium text-plum truncate">{friend.name}</span>
+            {friend.friendCode && (
+              <span className="text-xs font-mono text-mauve tracking-wider">
+                {friend.friendCode}
+              </span>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-export default function FriendsPage() {
-  const friendCode = useQuery(api.friends.getMyFriendCode);
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
+export default function FriendsPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-8">
       <div className="flex flex-col gap-1">
@@ -240,19 +254,31 @@ export default function FriendsPage() {
 
       {/* Friend code + send request */}
       <div className="bg-white/60 backdrop-blur-sm border border-blush/40 rounded-2xl p-5 flex flex-col gap-4">
-        {friendCode === undefined ? (
-          <div className="h-10 animate-pulse rounded-xl bg-blush/20" />
-        ) : friendCode ? (
-          <FriendCodeDisplay code={friendCode} />
-        ) : null}
+        <Suspense fallback={<div className="h-10 animate-pulse rounded-xl bg-blush/20" />}>
+          <FriendCodeDisplay />
+        </Suspense>
         <SendRequestRow />
       </div>
 
       {/* Incoming requests */}
-      <IncomingRequests />
+      <section>
+        <h2 className="text-sm font-semibold text-mauve uppercase tracking-wider mb-3">
+          Incoming Requests
+        </h2>
+        <Suspense fallback={<CardSkeleton rows={2} />}>
+          <IncomingRequestsList />
+        </Suspense>
+      </section>
 
       {/* Friends list */}
-      <FriendsList />
+      <section>
+        <h2 className="text-sm font-semibold text-mauve uppercase tracking-wider mb-3">
+          Friends
+        </h2>
+        <Suspense fallback={<CardSkeleton rows={3} />}>
+          <FriendsList />
+        </Suspense>
+      </section>
     </div>
   );
 }
