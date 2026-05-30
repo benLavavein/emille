@@ -11,21 +11,7 @@ export default defineSchema({
     defaultStoreId: v.optional(v.id("groceryStores")),
     activeMealPlanId: v.optional(v.id("mealPlans")),
     currentlyCooking: v.optional(
-      v.union(
-        // New shape: array of sessions
-        v.array(
-          v.object({
-            mealId: v.id("meals"),
-            stepIndex: v.number(),
-            activeTimer: v.optional(
-              v.object({
-                stepIndex: v.number(),
-                endTime: v.number(),
-              })
-            ),
-          })
-        ),
-        // Legacy shape: single object — kept temporarily for migration
+      v.array(
         v.object({
           mealId: v.id("meals"),
           stepIndex: v.number(),

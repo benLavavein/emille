@@ -258,21 +258,3 @@ export const setDefaultStore = mutation({
     return user._id;
   },
 });
-
-// One-time migration: clear any users who have the old single-object currentlyCooking shape
-export const migrateClearLegacyCooking = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const allUsers = await ctx.db.query("users").collect();
-    let cleared = 0;
-    for (const user of allUsers) {
-      const cooking = user.currentlyCooking as any;
-      // Old shape was a plain object with mealId; new shape is an array
-      if (cooking !== undefined && !Array.isArray(cooking)) {
-        await ctx.db.patch(user._id, { currentlyCooking: undefined });
-        cleared++;
-      }
-    }
-    return { cleared };
-  },
-});
