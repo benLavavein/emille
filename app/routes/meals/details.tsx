@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   CookingPot,
   X,
+  Users,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
@@ -130,7 +131,7 @@ export default function MealDetailsPage() {
   }
 
   return (
-    <Tabs defaultValue="ingredients" className="flex flex-col h-full">
+    <Tabs defaultValue="info" className="flex flex-col h-full">
       {isCookingThisMeal && (
         <div className="flex gap-4 bg-peach p-6 items-center shadow-md shrink-0">
           <CookingPot className="size-8 text-plum" />
@@ -190,18 +191,17 @@ export default function MealDetailsPage() {
                 <X className="size-5" />
               </Button>
             </div>
-            <h1 className="text-3xl font-bold text-plum mb-3">{meal.name}</h1>
-            {!isCookingThisMeal && <CookButton mealId={mealId} />}
+            <h1 className="text-2xl font-bold tracking-tight line-clamp-3 text-plum mb-3">
+              {meal.name}
+            </h1>
           </div>
 
           {/* Desktop header */}
           <div className="hidden md:block">
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-2xl font-bold text-plum">{meal.name}</h1>
+              <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
 
               <div className="flex items-center gap-2 shrink-0 ml-4">
-                {!isCookingThisMeal && <CookButton mealId={mealId} />}
-
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -227,66 +227,6 @@ export default function MealDetailsPage() {
               </div>
             </div>
           </div>
-
-          {meal.description && (
-            <p className="text-mauve mt-4 text-sm">
-              {meal.description}
-            </p>
-          )}
-
-          {(meal.prepTime || meal.cookTime) && (
-            <div className="flex items-center gap-4 mt-3">
-              {meal.prepTime && (
-                <span className="inline-flex items-center gap-1.5 text-sm text-mauve">
-                  <Clock className="size-4" />
-                  Prep: {formatDuration(meal.prepTime)}
-                </span>
-              )}
-              {meal.cookTime && (
-                <span className="inline-flex items-center gap-1.5 text-sm text-mauve">
-                  <Timer className="size-4" />
-                  Cook: {formatDuration(meal.cookTime)}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Meal Times Icons */}
-          {/* <div className="flex items-end gap-2 mt-4">
-            {MEAL_TIMES.map((time, index) => {
-              const Icon = MEAL_TIME_ICONS[time];
-              const isActive = meal.mealTimes?.includes(time);
-              const arcOffset =
-                index === 1 ? "-translate-y-2" : "translate-y-0";
-              return (
-                <Tooltip key={time}>
-                  <TooltipTrigger asChild>
-                    <span className={arcOffset}>
-                      <Icon
-                        className={`size-7 transition-colors ${
-                          isActive ? "text-plum" : "text-plum/20"
-                        }`}
-                      />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <span className="capitalize">{time}</span>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </div> */}
-
-          {/* Tags */}
-          {meal.tags && meal.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {meal.tags.map((tag: any) => (
-                <Badge key={tag._id} variant="secondary">
-                  {tag.name}
-                </Badge>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Delete Confirmation */}
@@ -311,6 +251,9 @@ export default function MealDetailsPage() {
         )}
 
         <TabsList className="w-full">
+          <TabsTrigger value="info" className="flex-1">
+            Info
+          </TabsTrigger>
           <TabsTrigger value="ingredients" className="flex-1">
             Ingredients
           </TabsTrigger>
@@ -322,10 +265,106 @@ export default function MealDetailsPage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
         <div className="max-w-5xl mx-auto w-full px-4 pb-6 md:px-8 md:pb-8">
+          <TabsContent value="info">
+            {/* Tags */}
+            {meal.tags && meal.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {meal.tags.map((tag: any) => (
+                  <Badge key={tag._id} variant="secondary">
+                    {tag.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-6 py-2">
+              {meal.description && (
+                <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50 p-4">
+                  <p className="text-sm text-mauve leading-relaxed">
+                    {meal.description}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-end justify-around">
+                {MEAL_TIMES.map((time, index) => {
+                  const Icon = MEAL_TIME_ICONS[time];
+                  const isActive = meal.mealTimes?.includes(time);
+                  const arcOffset =
+                    index === 1 ? "-translate-y-2" : "translate-y-0";
+                  return (
+                    <Tooltip key={time}>
+                      <TooltipTrigger asChild>
+                        <span className={arcOffset}>
+                          <Icon
+                            className={`size-7 transition-colors ${
+                              isActive ? "text-plum" : "text-plum/20"
+                            }`}
+                          />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <span className="capitalize">{time}</span>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+
+              {(meal.prepTime || meal.cookTime || meal.servings) && (
+                <div
+                  className={`flex items-center ${meal.servings ? "gap-6" : "justify-around"}`}
+                >
+                  {meal.prepTime && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="size-5 text-plum/60" />
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-mauve/60 font-medium">
+                          Prep
+                        </p>
+                        <p className="text-sm font-medium text-plum">
+                          {formatDuration(meal.prepTime)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {meal.cookTime && (
+                    <div className="flex items-center gap-2">
+                      <Timer className="size-5 text-plum/60" />
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-mauve/60 font-medium">
+                          Cook
+                        </p>
+                        <p className="text-sm font-medium text-plum">
+                          {formatDuration(meal.cookTime)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {meal.servings && (
+                    <div className="flex items-center gap-2">
+                      <Users className="size-5 text-plum/60" />
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-mauve/60 font-medium">
+                          Servings
+                        </p>
+                        <p className="text-sm font-medium text-plum">
+                          {meal.servings}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!isCookingThisMeal && <CookButton mealId={mealId} size="lg" />}
+            </div>
+          </TabsContent>
+
           <TabsContent value="ingredients">
             <div className="bg-white/60 backdrop-blur-sm rounded-md border border-blush/50 divide-y divide-blush/30">
               {meal.ingredients.map((ing, index: number) => (
-                <div key={index} className="flex gap-3 p-4 items-center">
+                <div key={index} className="flex gap-3 px-4 py-2 items-center">
                   <span className="text-mauve w-24 shrink-0 text-sm">
                     {[formatAmount(ing.amount), ing.unit]
                       .filter(Boolean)
