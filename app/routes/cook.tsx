@@ -87,26 +87,34 @@ export default function CookScreen() {
               {/* Card header — tap to go to cook page */}
               <button
                 type="button"
-                onClick={() => navigate(`/meals/${session.mealId}/cook`)}
+                onClick={() =>
+                navigate(
+                  `/meals/${session.mealId}/cook${session.stepIndex < 0 ? "?ingredients" : ""}`,
+                )
+              }
                 className="w-full flex items-center gap-4 p-4 text-left hover:bg-white/60 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-plum truncate">
                     {session.mealName}
                   </p>
-                  <p className="text-sm text-mauve mt-0.5">
-                    Step {session.stepIndex + 1} of {session.totalSteps}
-                  </p>
-
-                  {/* Progress bar */}
-                  <div className="mt-2 h-1.5 bg-blush/40 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-plum rounded-full transition-all"
-                      style={{
-                        width: `${((session.stepIndex + 1) / session.totalSteps) * 100}%`,
-                      }}
-                    />
-                  </div>
+                  {session.stepIndex < 0 ? (
+                    <p className="text-sm text-mauve mt-0.5">Get started</p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-mauve mt-0.5">
+                        Step {session.stepIndex + 1} of {session.totalSteps}
+                      </p>
+                      <div className="mt-2 h-1.5 bg-blush/40 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-plum rounded-full transition-all"
+                          style={{
+                            width: `${((session.stepIndex + 1) / session.totalSteps) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">

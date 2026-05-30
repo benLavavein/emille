@@ -127,7 +127,7 @@ export const setCooking = mutation({
   },
 });
 
-// Start cooking multiple meals at once (replaces any existing sessions)
+// Start cooking multiple meals, merging with any existing sessions
 export const startCookingMany = mutation({
   args: {
     mealIds: v.array(v.id("meals")),
@@ -142,12 +142,16 @@ export const startCookingMany = mutation({
       }
     }
 
-    const newSessions = args.mealIds.map((mealId) => ({
-      mealId,
-      stepIndex: 0,
-    }));
+    const existing = user.currentlyCooking ?? [];
+    const existingIds = new Set(existing.map((s) => s.mealId));
 
-    await ctx.db.patch(user._id, { currentlyCooking: newSessions });
+    const newSessions = args.mealIds
+      .filter((id) => !existingIds.has(id))
+      .map((mealId) => ({ mealId, stepIndex: -1 }));
+
+    await ctx.db.patch(user._id, {
+      currentlyCooking: [...existing, ...newSessions],
+    });
   },
 });
 

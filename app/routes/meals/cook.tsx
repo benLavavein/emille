@@ -174,7 +174,11 @@ function TimerButton({
   const handleStart = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      startTimer({ mealId: mealId as any, stepIndex, durationSeconds: timerSeconds });
+      startTimer({
+        mealId: mealId as any,
+        stepIndex,
+        durationSeconds: timerSeconds,
+      });
     },
     [startTimer, mealId, stepIndex, timerSeconds],
   );
@@ -238,6 +242,7 @@ function TimerButton({
 
 function IngredientsOverlay({
   ingredients,
+  hasSteps,
   onClose,
 }: {
   ingredients: {
@@ -246,6 +251,7 @@ function IngredientsOverlay({
     unit?: string;
     notes?: string;
   }[];
+  hasSteps: boolean;
   onClose: () => void;
 }) {
   return (
@@ -257,27 +263,46 @@ function IngredientsOverlay({
     >
       <div className="flex items-center justify-between px-6 py-4 border-b border-blush/30 w-full">
         <span className="text-lg font-semibold text-plum">Ingredients</span>
+        <Link
+          to="/cook"
+          className="p-1 rounded-lg text-mauve hover:text-plum hover:bg-blush/20 transition-colors"
+        >
+          <X className="size-6" />
+        </Link>
       </div>
       <div className="flex-1 overflow-y-auto px-6 py-4 relative w-full">
-        <div className="divide-y divide-blush/30">
-          {ingredients.map((ing, i) => (
-            <div key={i} className="flex items-center gap-3 py-3">
-              <span className="text-mauve min-w-20 text-sm">
-                {[formatAmount(ing.amount), ing.unit]
-                  .filter(Boolean)
-                  .join(" ") || "—"}
-              </span>
-              <span className="font-medium text-plum">{ing.name}</span>
-              {ing.notes && (
-                <span className="text-mauve/70 text-sm">({ing.notes})</span>
-              )}
-            </div>
-          ))}
-        </div>
+        {ingredients.length === 0 ? (
+          <p className="text-mauve/60 text-sm text-center mt-8 italic grow justify-center">
+            No ingredients here. <br />
+            At least it's low on calories!
+          </p>
+        ) : (
+          <div className="divide-y divide-blush/30">
+            {ingredients.map((ing, i) => (
+              <div key={i} className="flex items-center gap-3 py-3">
+                <span className="text-mauve min-w-20 text-sm">
+                  {[formatAmount(ing.amount), ing.unit]
+                    .filter(Boolean)
+                    .join(" ") || "—"}
+                </span>
+                <span className="font-medium text-plum">{ing.name}</span>
+                {ing.notes && (
+                  <span className="text-mauve/70 text-sm">({ing.notes})</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <Button onClick={onClose} className="w-[90%] py-8 m-4" variant="outline">
-        Back to instructions
-      </Button>
+      {hasSteps && (
+        <button
+          onClick={onClose}
+          className="w-[90%] py-5 m-4 rounded-xl bg-orange-400/20 text-orange-500 font-semibold text-base hover:bg-orange-400/30 transition-colors flex items-center justify-center gap-2"
+        >
+          <ListOrdered className="size-5" />
+          Instructions
+        </button>
+      )}
     </motion.div>
   );
 }
@@ -298,7 +323,9 @@ export default function CookPage() {
   const mealId = params.id as string;
   const meal = useQuery(api.meals.get, { id: mealId as any });
   const cookingSessions = useQuery(api.meals.getCooking);
-  const cooking = (cookingSessions ?? []).find((s) => s.mealId === mealId) ?? null;
+  const cooking =
+    (cookingSessions ?? []).filter(Boolean).find((s) => s!.mealId === mealId) ??
+    null;
   const setCooking = useMutation(api.users.setCooking);
   const clearOneCooking = useMutation(api.users.clearOneCooking);
   const [currentStep, setCurrentStep] = useState(0);
@@ -306,22 +333,41 @@ export default function CookPage() {
   const [showIngredients, setShowIngredients] = useState(() =>
     searchParams.has("ingredients"),
   );
+  // Whether the user has moved past the ingredients into the step view
+  const [hasStarted, setHasStarted] = useState(false);
   const hasInitialized = useRef(false);
 
   useEffect(() => {
     if (!meal || hasInitialized.current) return;
     hasInitialized.current = true;
 
-    const resumeStep = cooking?.stepIndex ?? 0;
-    setCurrentStep(resumeStep);
-    setCooking({ mealId: mealId as any, stepIndex: resumeStep });
-  }, [meal, cooking, setCooking, mealId]);
+    const storedStep = cooking?.stepIndex ?? -1;
+    if (storedStep >= 0) {
+      // Resuming mid-cook
+      const maxStep = Math.max(0, meal.steps.length - 1);
+      const resumeStep = Math.min(storedStep, maxStep);
+      setCurrentStep(resumeStep);
+      setHasStarted(true);
+    } else {
+      // Not yet started — show ingredients
+      setCurrentStep(0);
+      setShowIngredients(true);
+    }
+  }, [meal, cooking, mealId]);
 
+  // Save step progress whenever currentStep changes (only after starting)
   useEffect(() => {
-    if (hasInitialized.current && meal) {
+    if (hasInitialized.current && meal && hasStarted) {
       setCooking({ mealId: mealId as any, stepIndex: currentStep });
     }
-  }, [currentStep, setCooking, mealId, meal]);
+  }, [currentStep, setCooking, mealId, meal, hasStarted]);
+
+  const handleStartSteps = useCallback(() => {
+    setHasStarted(true);
+    setShowIngredients(false);
+    setCurrentStep(0);
+    setCooking({ mealId: mealId as any, stepIndex: 0 });
+  }, [setCooking, mealId]);
 
   const handleFinish = useCallback(async () => {
     await clearOneCooking({ mealId: mealId as any });
@@ -369,31 +415,45 @@ export default function CookPage() {
   }
 
   const steps: Step[] = meal.steps;
+  const hasSteps = steps.length > 0;
   const step = steps[currentStep];
   const activeTimer: ActiveTimer = cooking?.activeTimer ?? null;
+
+  const ingredients = meal.ingredients.map((ing: any) => ({
+    name: ing.name,
+    amount: ing.amount,
+    unit: ing.unit,
+    notes: ing.notes,
+  }));
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col select-none">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-blush/30">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-mauve">
-            Step {currentStep + 1} of {steps.length}
-          </span>
+          {hasSteps ? (
+            <span className="text-sm font-medium text-mauve">
+              Step {currentStep + 1} of {steps.length}
+            </span>
+          ) : (
+            <span className="text-sm font-medium text-mauve">Ingredients</span>
+          )}
           <span className="text-sm text-mauve/50 hidden sm:inline">
             · {meal.name}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleFinish}
-            className="p-2 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
-            title="All Finished"
-          >
-            <CheckCircle2 className="size-5" />
-          </button>
+          {hasSteps && (
+            <button
+              onClick={handleFinish}
+              className="p-2 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
+              title="All Finished"
+            >
+              <CheckCircle2 className="size-5" />
+            </button>
+          )}
           <Link
-            to={`/meals/${mealId}`}
+            to="/cook"
             className="p-2 rounded-lg text-mauve hover:text-plum hover:bg-blush/20 transition-colors"
           >
             <X className="size-6" />
@@ -401,105 +461,120 @@ export default function CookPage() {
         </div>
       </div>
 
-      {/* Main step area */}
-      <div className="flex-1 flex flex-col relative overflow-hidden">
-        <button
-          onClick={goBack}
-          disabled={currentStep === 0}
-          className="group absolute inset-y-0 left-0 w-1/2 z-10 cursor-pointer disabled:cursor-default flex items-center justify-start pl-3"
-          aria-label="Previous step"
-        >
-          <ChevronLeft className="size-7 text-plum/50 transition-opacity group-disabled:opacity-0" />
-        </button>
-        <button
-          onClick={goForward}
-          disabled={currentStep === steps.length - 1}
-          className="group absolute inset-y-0 right-0 w-1/2 z-10 cursor-pointer disabled:cursor-default flex items-center justify-end pr-3"
-          aria-label="Next step"
-        >
-          <ChevronRight className="size-7 text-plum/50 transition-opacity group-disabled:opacity-0" />
-        </button>
+      {hasSteps ? (
+        <>
+          {/* Main step area */}
+          <div className="flex-1 flex flex-col relative overflow-hidden">
+            <button
+              onClick={goBack}
+              disabled={currentStep === 0}
+              className="group absolute inset-y-0 left-0 w-1/2 z-10 cursor-pointer disabled:cursor-default flex items-center justify-start pl-3"
+              aria-label="Previous step"
+            >
+              <ChevronLeft className="size-7 text-plum/50 transition-opacity group-disabled:opacity-0" />
+            </button>
+            <button
+              onClick={goForward}
+              disabled={currentStep === steps.length - 1}
+              className="group absolute inset-y-0 right-0 w-1/2 z-10 cursor-pointer disabled:cursor-default flex items-center justify-end pr-3"
+              aria-label="Next step"
+            >
+              <ChevronRight className="size-7 text-plum/50 transition-opacity group-disabled:opacity-0" />
+            </button>
 
-        <AnimatePresence mode="wait" initial={false} custom={direction}>
-          <motion.div
-            key={currentStep}
-            custom={direction}
-            variants={{
-              enter: (d: number) => ({ opacity: 0, x: d >= 0 ? 40 : -40 }),
-              center: {
-                opacity: 1,
-                x: 0,
-                transition: { type: "spring", stiffness: 500, damping: 38 },
-              },
-              exit: (d: number) => ({
-                opacity: 0,
-                x: d >= 0 ? -40 : 40,
-                transition: { duration: 0.1 },
-              }),
-            }}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            className="flex-1 flex flex-col items-center justify-center px-8 md:px-16 gap-6"
-          >
-            <p className="text-2xl md:text-4xl leading-relaxed text-plum text-center font-medium">
-              {step.text}
-            </p>
-            {step.timerSeconds && (
-              <div className="z-20 relative">
-                <TimerButton
-                  mealId={mealId}
-                  stepIndex={currentStep}
-                  timerSeconds={step.timerSeconds}
-                  activeTimer={activeTimer}
-                  large
+            <AnimatePresence mode="wait" custom={direction}>
+              <motion.div
+                key={currentStep}
+                custom={direction}
+                variants={{
+                  enter: (d: number) => ({ opacity: 0, x: d >= 0 ? 40 : -40 }),
+                  center: {
+                    opacity: 1,
+                    x: 0,
+                    transition: { type: "spring", stiffness: 500, damping: 38 },
+                  },
+                  exit: (d: number) => ({
+                    opacity: 0,
+                    x: d >= 0 ? -40 : 40,
+                    transition: { duration: 0.1 },
+                  }),
+                }}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="flex-1 flex flex-col items-center justify-center px-8 md:px-16 gap-6"
+              >
+                {step && (
+                  <>
+                    <p className="text-2xl md:text-4xl leading-relaxed text-plum text-center font-medium">
+                      {step.text}
+                    </p>
+                    {step.timerSeconds && (
+                      <div className="z-20 relative">
+                        <TimerButton
+                          mealId={mealId}
+                          stepIndex={currentStep}
+                          timerSeconds={step.timerSeconds}
+                          activeTimer={activeTimer}
+                          large
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-blush/30">
+            <div className="flex gap-1.5 justify-center">
+              {steps.map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === currentStep ? "w-8 bg-plum" : "w-1.5 bg-blush/50"
+                  }`}
                 />
-              </div>
+              ))}
+            </div>
+            <p className="text-center text-xs text-mauve/50 mt-2">
+              Tap left side to go back · Tap right side to go forward
+            </p>
+          </div>
+
+          {/* Floating ingredients button */}
+          <button
+            onClick={() => setShowIngredients(true)}
+            className="fixed bottom-20 right-4 z-55 bg-orange-400/20 border-orange-400/20 rounded-xl p-8 shadow-sm hover:bg-orange-400/30 transition-colors text-orange-400/50 hover:text-orange-400/70"
+            title="View ingredients"
+          >
+            <Carrot className="size-7" />
+          </button>
+
+          {/* Ingredients overlay */}
+          <AnimatePresence initial={false}>
+            {showIngredients && (
+              <IngredientsOverlay
+                ingredients={ingredients}
+                hasSteps={true}
+                onClose={
+                  hasStarted
+                    ? () => setShowIngredients(false)
+                    : handleStartSteps
+                }
+              />
             )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 py-4 border-t border-blush/30">
-        <div className="flex gap-1.5 justify-center">
-          {steps.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all ${
-                i === currentStep ? "w-8 bg-plum" : "w-1.5 bg-blush/50"
-              }`}
-            />
-          ))}
-        </div>
-        <p className="text-center text-xs text-mauve/50 mt-2">
-          Tap left side to go back · Tap right side to go forward
-        </p>
-      </div>
-
-      {/* Floating toggle button */}
-      <button
-        onClick={() => setShowIngredients(true)}
-        className="fixed bottom-20 right-4 z-55 bg-orange-400/20 border-orange-400/20 rounded-xl p-8 shadow-sm hover:bg-orange-400/30 transition-colors text-orange-400/50 hover:text-orange-400/70"
-        title="View ingredients"
-      >
-        <Carrot className="size-7" />
-      </button>
-
-      {/* Ingredients overlay */}
-      <AnimatePresence>
-        {showIngredients && (
-          <IngredientsOverlay
-            ingredients={meal.ingredients.map((ing: any) => ({
-              name: ing.name,
-              amount: ing.amount,
-              unit: ing.unit,
-              notes: ing.notes,
-            }))}
-            onClose={() => setShowIngredients(false)}
-          />
-        )}
-      </AnimatePresence>
+          </AnimatePresence>
+        </>
+      ) : (
+        /* No steps — show ingredients inline (full screen, no overlay needed) */
+        <IngredientsOverlay
+          ingredients={ingredients}
+          hasSteps={false}
+          onClose={() => {}}
+        />
+      )}
     </div>
   );
 }
