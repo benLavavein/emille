@@ -11,16 +11,32 @@ export default defineSchema({
     defaultStoreId: v.optional(v.id("groceryStores")),
     activeMealPlanId: v.optional(v.id("mealPlans")),
     currentlyCooking: v.optional(
-      v.object({
-        mealId: v.id("meals"),
-        stepIndex: v.number(),
-        activeTimer: v.optional(
+      v.union(
+        // New shape: array of sessions
+        v.array(
           v.object({
+            mealId: v.id("meals"),
             stepIndex: v.number(),
-            endTime: v.number(),
+            activeTimer: v.optional(
+              v.object({
+                stepIndex: v.number(),
+                endTime: v.number(),
+              })
+            ),
           })
         ),
-      })
+        // Legacy shape: single object — kept temporarily for migration
+        v.object({
+          mealId: v.id("meals"),
+          stepIndex: v.number(),
+          activeTimer: v.optional(
+            v.object({
+              stepIndex: v.number(),
+              endTime: v.number(),
+            })
+          ),
+        })
+      )
     ),
   })
     .index("by_clerk_id", ["clerkId"])
@@ -65,6 +81,15 @@ export default defineSchema({
     mealTimes: v.array(v.string()), // ["breakfast", "lunch", "dinner"]
     tagIds: v.array(v.id("tags")), // Tags for this meal
     servings: v.optional(v.number()),
+    type: v.optional(v.union(v.literal("meal"), v.literal("side"))),
+    sideAttachments: v.optional(
+      v.array(
+        v.object({
+          sideId: v.id("meals"),
+          alwaysInclude: v.boolean(),
+        })
+      )
+    ),
     ingredients: v.array(
       v.object({
         name: v.string(),

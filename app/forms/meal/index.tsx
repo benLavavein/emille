@@ -15,6 +15,8 @@ export type MealFormValues = {
   servings: string;
   mealTimes: string[];
   tags: { id: string; name: string }[];
+  type: "meal" | "side";
+  sideAttachments: { sideId: string; name: string; alwaysInclude: boolean }[];
   ingredients: {
     _id: string;
     name: string;
@@ -42,6 +44,8 @@ export type MealFormData = {
   servings?: number;
   mealTimes: string[];
   tagIds: string[];
+  type: "meal" | "side";
+  sideAttachments: { sideId: string; alwaysInclude: boolean }[];
   ingredients: {
     name: string;
     amount: number | undefined;
@@ -59,6 +63,8 @@ type MealFormProps = {
     cookTime?: number;
     servings?: number;
     mealTimes: string[];
+    type?: "meal" | "side";
+    sideAttachments?: { sideId: string; name: string; alwaysInclude: boolean }[];
     ingredients: {
       name: string;
       amount: number | undefined;
@@ -96,6 +102,8 @@ export function MealForm({
       servings: initialData?.servings ? String(initialData.servings) : "",
       mealTimes: initialData?.mealTimes ?? [],
       tags: initialData?.tags ?? [],
+      type: initialData?.type ?? "meal",
+      sideAttachments: initialData?.sideAttachments ?? [],
       ingredients: (initialData?.ingredients ?? []).map((ing) => ({
         _id: nanoid(),
         name: ing.name,
@@ -127,6 +135,11 @@ export function MealForm({
         servings: servingsInt > 0 ? servingsInt : undefined,
         mealTimes: value.mealTimes,
         tagIds: value.tags.map((t) => t.id),
+        type: value.type,
+        sideAttachments: value.sideAttachments.map(({ sideId, alwaysInclude }) => ({
+          sideId,
+          alwaysInclude,
+        })),
         ingredients: value.ingredients
           .filter((ing) => ing.name.trim())
           .map(({ _id: _, ...ing }) => ({

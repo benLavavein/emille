@@ -22,7 +22,6 @@ import {
   Trash2,
   Timer,
   Clock,
-  AlertTriangle,
   CookingPot,
   X,
   Users,
@@ -30,8 +29,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 import { CookButton } from "./components/cook-button";
+import { SideCard } from "./components/side-card";
 import type { Id } from "convex/_generated/dataModel";
-import { CookingPotIcon } from "~/components/icons/cooking-pot";
 
 const FRACTION_MAP: [number, string][] = [
   [0.125, "⅛"],
@@ -81,13 +80,16 @@ export default function MealDetailsPage() {
   const navigate = useNavigate();
 
   const meal = useQuery(api.meals.get, { id: mealId });
-  const currentlyCooking = useQuery(api.meals.getCooking);
-  const clearCooking = useMutation(api.users.clearCooking);
+  const cookingSessions = useQuery(api.meals.getCooking);
+  const clearOneCooking = useMutation(api.users.clearOneCooking);
   const deleteMeal = useMutation(api.meals.remove);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const isCookingThisMeal = currentlyCooking?.mealId === mealId;
+  const cookingSession = (cookingSessions ?? []).filter(Boolean).find(
+    (s) => s!.mealId === mealId,
+  );
+  const isCookingThisMeal = !!cookingSession;
 
   const handleDelete = async () => {
     try {
@@ -130,6 +132,13 @@ export default function MealDetailsPage() {
     );
   }
 
+  const sideAttachments = (meal.sideAttachments ?? []).filter(Boolean) as {
+    sideId: Id<"meals">;
+    name: string;
+    cookTime?: number;
+    alwaysInclude: boolean;
+  }[];
+
   return (
     <Tabs defaultValue="info" className="flex flex-col h-full">
       {isCookingThisMeal && (
@@ -140,16 +149,15 @@ export default function MealDetailsPage() {
               Currently cooking!
             </h1>
             <p className="text-mauve text-sm text-center">
-              Step {currentlyCooking?.stepIndex + 1} of{" "}
-              {currentlyCooking?.totalSteps}
+              Step {(cookingSession?.stepIndex ?? 0) + 1} of{" "}
+              {cookingSession?.totalSteps}
             </p>
           </div>
-
           <Button
             variant="outline"
             size="sm"
             className="px-2"
-            onClick={() => clearCooking()}
+            onClick={() => clearOneCooking({ mealId })}
           >
             I'm done
           </Button>
@@ -200,7 +208,6 @@ export default function MealDetailsPage() {
           <div className="hidden md:block">
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
-
               <div className="flex items-center gap-2 shrink-0 ml-4">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -266,26 +273,19 @@ export default function MealDetailsPage() {
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
         <div className="max-w-5xl mx-auto w-full px-4 pb-6 md:px-8 md:pb-8">
           <TabsContent value="info">
-            {/* Tags */}
-            {meal.tags && meal.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {meal.tags.map((tag: any) => (
-                  <Badge key={tag._id} variant="secondary">
-                    {tag.name}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
             <div className="space-y-6 py-2">
-              {meal.description && (
-                <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50 p-4">
-                  <p className="text-sm text-mauve leading-relaxed">
-                    {meal.description}
-                  </p>
+              {/* Tags */}
+              {meal.tags && meal.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {meal.tags.map((tag: any) => (
+                    <Badge key={tag._id} variant="secondary">
+                      {tag.name}
+                    </Badge>
+                  ))}
                 </div>
               )}
 
+              {/* Meal time icons */}
               <div className="flex items-end justify-around">
                 {MEAL_TIMES.map((time, index) => {
                   const Icon = MEAL_TIME_ICONS[time];
@@ -311,6 +311,7 @@ export default function MealDetailsPage() {
                 })}
               </div>
 
+              {/* Timing & servings */}
               {(meal.prepTime || meal.cookTime || meal.servings) && (
                 <div
                   className={`flex items-center ${meal.servings ? "gap-6" : "justify-around"}`}
@@ -357,7 +358,43 @@ export default function MealDetailsPage() {
                 </div>
               )}
 
-              {!isCookingThisMeal && <CookButton mealId={mealId} size="lg" />}
+              {/* Description */}
+              {meal.description && (
+                <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-blush/50 p-4">
+                  <p className="text-sm text-mauve leading-relaxed">
+                    {meal.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Side dishes */}
+              {sideAttachments.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-mauve/60 font-medium mb-2">
+                    Side dishes
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {sideAttachments.map((att) => (
+                      <SideCard
+                        key={att.sideId}
+                        sideId={att.sideId}
+                        name={att.name}
+                        cookTime={att.cookTime}
+                        alwaysInclude={att.alwaysInclude}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cook button */}
+              {!isCookingThisMeal && (
+                <CookButton
+                  mealId={mealId}
+                  size="lg"
+                  sideAttachments={sideAttachments}
+                />
+              )}
             </div>
           </TabsContent>
 

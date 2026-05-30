@@ -136,11 +136,13 @@ function playChime() {
 }
 
 function TimerButton({
+  mealId,
   stepIndex,
   timerSeconds,
   activeTimer,
   large,
 }: {
+  mealId: string;
   stepIndex: number;
   timerSeconds: number;
   activeTimer: ActiveTimer;
@@ -162,27 +164,27 @@ function TimerButton({
     if (justFinished && !hasPlayed.current) {
       hasPlayed.current = true;
       playChime();
-      clearTimer();
+      clearTimer({ mealId: mealId as any });
     }
     if (!justFinished) {
       hasPlayed.current = false;
     }
-  }, [justFinished, clearTimer]);
+  }, [justFinished, clearTimer, mealId]);
 
   const handleStart = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      startTimer({ stepIndex, durationSeconds: timerSeconds });
+      startTimer({ mealId: mealId as any, stepIndex, durationSeconds: timerSeconds });
     },
-    [startTimer, stepIndex, timerSeconds],
+    [startTimer, mealId, stepIndex, timerSeconds],
   );
 
   const handleStop = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      clearTimer();
+      clearTimer({ mealId: mealId as any });
     },
-    [clearTimer],
+    [clearTimer, mealId],
   );
 
   if (justFinished) {
@@ -295,9 +297,10 @@ export default function CookPage() {
   const [searchParams] = useSearchParams();
   const mealId = params.id as string;
   const meal = useQuery(api.meals.get, { id: mealId as any });
-  const cooking = useQuery(api.meals.getCooking);
+  const cookingSessions = useQuery(api.meals.getCooking);
+  const cooking = (cookingSessions ?? []).find((s) => s.mealId === mealId) ?? null;
   const setCooking = useMutation(api.users.setCooking);
-  const clearCooking = useMutation(api.users.clearCooking);
+  const clearOneCooking = useMutation(api.users.clearOneCooking);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(0);
   const [showIngredients, setShowIngredients] = useState(() =>
@@ -309,7 +312,7 @@ export default function CookPage() {
     if (!meal || hasInitialized.current) return;
     hasInitialized.current = true;
 
-    const resumeStep = cooking?.mealId === mealId ? cooking.stepIndex : 0;
+    const resumeStep = cooking?.stepIndex ?? 0;
     setCurrentStep(resumeStep);
     setCooking({ mealId: mealId as any, stepIndex: resumeStep });
   }, [meal, cooking, setCooking, mealId]);
@@ -321,9 +324,9 @@ export default function CookPage() {
   }, [currentStep, setCooking, mealId, meal]);
 
   const handleFinish = useCallback(async () => {
-    await clearCooking();
+    await clearOneCooking({ mealId: mealId as any });
     navigate(`/meals/${mealId}`);
-  }, [clearCooking, navigate, mealId]);
+  }, [clearOneCooking, navigate, mealId]);
 
   const goBack = useCallback(() => {
     setDirection(-1);
@@ -336,7 +339,7 @@ export default function CookPage() {
     setCurrentStep((s) => Math.min(meal.steps.length - 1, s + 1));
   }, [meal]);
 
-  if (meal === undefined || cooking === undefined) {
+  if (meal === undefined || cookingSessions === undefined) {
     return (
       <div className="fixed inset-0 bg-white flex items-center justify-center">
         <div className="text-center">
@@ -367,8 +370,7 @@ export default function CookPage() {
 
   const steps: Step[] = meal.steps;
   const step = steps[currentStep];
-  const activeTimer: ActiveTimer =
-    (cooking?.mealId === mealId ? cooking.activeTimer : null) ?? null;
+  const activeTimer: ActiveTimer = cooking?.activeTimer ?? null;
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col select-none">
@@ -446,6 +448,7 @@ export default function CookPage() {
             {step.timerSeconds && (
               <div className="z-20 relative">
                 <TimerButton
+                  mealId={mealId}
                   stepIndex={currentStep}
                   timerSeconds={step.timerSeconds}
                   activeTimer={activeTimer}

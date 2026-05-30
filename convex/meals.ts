@@ -21,7 +21,6 @@ export const list = query({
       .order("desc")
       .collect();
 
-    // Fetch tag details for each meal
     const mealsWithTags = await Promise.all(
       meals.map(async (meal) => {
         const tags = await Promise.all(
@@ -32,6 +31,7 @@ export const list = query({
         );
         return {
           ...meal,
+          type: meal.type ?? "meal",
           steps: normalizeSteps(meal.steps),
           tags: tags.filter(Boolean),
         };
@@ -42,7 +42,26 @@ export const list = query({
   },
 });
 
-// Get a single meal by ID with ingredient and tag details
+// Get only side dishes for the current user (for pickers)
+export const listSides = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    const meals = await ctx.db
+      .query("meals")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .collect();
+
+    return meals
+      .filter((m) => m.type === "side")
+      .map((m) => ({ _id: m._id, name: m.name, cookTime: m.cookTime }));
+  },
+});
+
+// Get a single meal by ID with ingredient, tag, and side details
 export const get = query({
   args: { id: v.id("meals") },
   handler: async (ctx, args) => {
@@ -54,7 +73,6 @@ export const get = query({
       return null;
     }
 
-    // Fetch tag details
     const tags = await Promise.all(
       (meal.tagIds || []).map(async (tagId) => {
         const tag = await ctx.db.get(tagId);
@@ -62,10 +80,25 @@ export const get = query({
       })
     );
 
+    const sideAttachments = await Promise.all(
+      (meal.sideAttachments ?? []).map(async (att) => {
+        const side = await ctx.db.get(att.sideId);
+        if (!side || side.userId !== user._id) return null;
+        return {
+          sideId: att.sideId,
+          alwaysInclude: att.alwaysInclude,
+          name: side.name,
+          cookTime: side.cookTime,
+        };
+      })
+    );
+
     return {
       ...meal,
+      type: meal.type ?? "meal",
       steps: normalizeSteps(meal.steps),
       tags: tags.filter(Boolean),
+      sideAttachments: sideAttachments.filter(Boolean),
     };
   },
 });
@@ -80,6 +113,15 @@ export const create = mutation({
     servings: v.optional(v.number()),
     mealTimes: v.array(v.string()),
     tagIds: v.array(v.id("tags")),
+    type: v.optional(v.union(v.literal("meal"), v.literal("side"))),
+    sideAttachments: v.optional(
+      v.array(
+        v.object({
+          sideId: v.id("meals"),
+          alwaysInclude: v.boolean(),
+        })
+      )
+    ),
     ingredients: v.array(
       v.object({
         name: v.string(),
@@ -98,11 +140,17 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
-    // Verify all tags belong to this user
     for (const tagId of args.tagIds) {
       const tag = await ctx.db.get(tagId);
       if (!tag || tag.userId !== user._id) {
         throw new Error("Invalid tag");
+      }
+    }
+
+    for (const att of args.sideAttachments ?? []) {
+      const side = await ctx.db.get(att.sideId);
+      if (!side || side.userId !== user._id) {
+        throw new Error("Invalid side dish");
       }
     }
 
@@ -115,6 +163,8 @@ export const create = mutation({
       servings: args.servings,
       mealTimes: args.mealTimes,
       tagIds: args.tagIds,
+      type: args.type ?? "meal",
+      sideAttachments: args.sideAttachments ?? [],
       ingredients: args.ingredients,
       steps: args.steps,
       createdAt: Date.now(),
@@ -133,6 +183,15 @@ export const update = mutation({
     servings: v.optional(v.number()),
     mealTimes: v.optional(v.array(v.string())),
     tagIds: v.optional(v.array(v.id("tags"))),
+    type: v.optional(v.union(v.literal("meal"), v.literal("side"))),
+    sideAttachments: v.optional(
+      v.array(
+        v.object({
+          sideId: v.id("meals"),
+          alwaysInclude: v.boolean(),
+        })
+      )
+    ),
     ingredients: v.optional(
       v.array(
         v.object({
@@ -160,12 +219,20 @@ export const update = mutation({
       throw new Error("Meal not found");
     }
 
-    // If updating tags, verify they all belong to this user
     if (args.tagIds) {
       for (const tagId of args.tagIds) {
         const tag = await ctx.db.get(tagId);
         if (!tag || tag.userId !== user._id) {
           throw new Error("Invalid tag");
+        }
+      }
+    }
+
+    if (args.sideAttachments) {
+      for (const att of args.sideAttachments) {
+        const side = await ctx.db.get(att.sideId);
+        if (!side || side.userId !== user._id) {
+          throw new Error("Invalid side dish");
         }
       }
     }
@@ -179,6 +246,8 @@ export const update = mutation({
     if (args.servings !== undefined) updates.servings = args.servings;
     if (args.mealTimes !== undefined) updates.mealTimes = args.mealTimes;
     if (args.tagIds !== undefined) updates.tagIds = args.tagIds;
+    if (args.type !== undefined) updates.type = args.type;
+    if (args.sideAttachments !== undefined) updates.sideAttachments = args.sideAttachments;
     if (args.ingredients !== undefined) updates.ingredients = args.ingredients;
     if (args.steps !== undefined) updates.steps = args.steps;
 
@@ -191,20 +260,26 @@ export const getCooking = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    if (!user) return null;
-    const cooking = user.currentlyCooking;
-    if (!cooking) return null;
+    if (!user) return [];
+    const sessions = user.currentlyCooking;
+    if (!sessions || sessions.length === 0) return [];
 
-    const meal = await ctx.db.get(cooking.mealId);
-    if (!meal || meal.userId !== user._id) return null;
+    const results = await Promise.all(
+      sessions.map(async (session) => {
+        const meal = await ctx.db.get(session.mealId);
+        if (!meal || meal.userId !== user._id) return null;
+        return {
+          mealId: session.mealId,
+          mealName: meal.name,
+          mealType: meal.type ?? "meal",
+          stepIndex: session.stepIndex,
+          totalSteps: meal.steps.length,
+          activeTimer: session.activeTimer ?? null,
+        };
+      })
+    );
 
-    return {
-      mealId: cooking.mealId,
-      mealName: meal.name,
-      stepIndex: cooking.stepIndex,
-      totalSteps: meal.steps.length,
-      activeTimer: cooking.activeTimer ?? null,
-    };
+    return results.filter(Boolean);
   },
 });
 

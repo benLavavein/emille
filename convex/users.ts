@@ -29,7 +29,6 @@ export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
     return null;
   }
 
-  // Look up the user by their Clerk ID
   const user = await ctx.db
     .query("users")
     .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
@@ -45,15 +44,12 @@ export async function requireUser(ctx: QueryCtx | MutationCtx) {
     throw new Error("Not authenticated");
   }
 
-  // Look up the user by their Clerk ID
   const user = await ctx.db
     .query("users")
     .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
     .unique();
 
   if (!user) {
-    // User is authenticated but not yet in our database
-    // This can happen on first sign-in before upsertUser is called
     throw new Error("User not found - please refresh the page");
   }
 
@@ -75,7 +71,6 @@ export const upsertUser = mutation({
       .unique();
 
     if (existingUser) {
-      // Update existing user
       await ctx.db.patch(existingUser._id, {
         email: identity.email || existingUser.email,
         name: identity.name || existingUser.name,
@@ -83,7 +78,6 @@ export const upsertUser = mutation({
       return existingUser._id;
     }
 
-    // Create new user
     const friendCode = await generateUniqueFriendCode(ctx);
     const userId = await ctx.db.insert("users", {
       clerkId: identity.subject,
@@ -104,6 +98,7 @@ export const getMe = query({
   },
 });
 
+// Start cooking a single meal, preserving any existing sessions
 export const setCooking = mutation({
   args: {
     mealId: v.id("meals"),
@@ -117,84 +112,127 @@ export const setCooking = mutation({
       throw new Error("Meal not found");
     }
 
-    const existing = user.currentlyCooking;
-    const preserveTimer =
-      existing?.mealId === args.mealId ? existing.activeTimer : undefined;
+    const sessions = user.currentlyCooking ?? [];
+    const existing = sessions.find((s) => s.mealId === args.mealId);
 
-    await ctx.db.patch(user._id, {
-      currentlyCooking: {
-        mealId: args.mealId,
-        stepIndex: args.stepIndex,
-        activeTimer: preserveTimer,
-      },
-    });
+    const updated = existing
+      ? sessions.map((s) =>
+          s.mealId === args.mealId
+            ? { ...s, stepIndex: args.stepIndex }
+            : s
+        )
+      : [...sessions, { mealId: args.mealId, stepIndex: args.stepIndex }];
+
+    await ctx.db.patch(user._id, { currentlyCooking: updated });
   },
 });
 
-export const clearCooking = mutation({
-  args: {},
-  handler: async (ctx) => {
+// Start cooking multiple meals at once (replaces any existing sessions)
+export const startCookingMany = mutation({
+  args: {
+    mealIds: v.array(v.id("meals")),
+  },
+  handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const mealId = user.currentlyCooking?.mealId;
 
-    if (mealId && user.activeMealPlanId) {
+    for (const mealId of args.mealIds) {
+      const meal = await ctx.db.get(mealId);
+      if (!meal || meal.userId !== user._id) {
+        throw new Error(`Meal not found: ${mealId}`);
+      }
+    }
+
+    const newSessions = args.mealIds.map((mealId) => ({
+      mealId,
+      stepIndex: 0,
+    }));
+
+    await ctx.db.patch(user._id, { currentlyCooking: newSessions });
+  },
+});
+
+// Remove one meal from cooking sessions (marks it as cooked in the meal plan)
+export const clearOneCooking = mutation({
+  args: { mealId: v.id("meals") },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    if (user.activeMealPlanId) {
       const plan = await ctx.db.get(user.activeMealPlanId);
       if (plan && plan.userId === user._id) {
         const inPlan = [
           ...plan.breakfastMealIds,
           ...plan.lunchMealIds,
           ...plan.dinnerMealIds,
-        ].some((id) => id === mealId);
+        ].some((id) => id === args.mealId);
         if (inPlan) {
           const cooked = plan.cookedMealIds ?? [];
-          if (!cooked.includes(mealId)) {
+          if (!cooked.includes(args.mealId)) {
             await ctx.db.patch(plan._id, {
-              cookedMealIds: [...cooked, mealId],
+              cookedMealIds: [...cooked, args.mealId],
             });
           }
         }
       }
     }
 
+    const sessions = (user.currentlyCooking ?? []).filter(
+      (s) => s.mealId !== args.mealId
+    );
+    await ctx.db.patch(user._id, {
+      currentlyCooking: sessions.length > 0 ? sessions : undefined,
+    });
+  },
+});
+
+// Clear all cooking sessions
+export const clearCooking = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
     await ctx.db.patch(user._id, { currentlyCooking: undefined });
   },
 });
 
 export const startTimer = mutation({
   args: {
+    mealId: v.id("meals"),
     stepIndex: v.number(),
     durationSeconds: v.number(),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const cooking = user.currentlyCooking;
-    if (!cooking) throw new Error("Not currently cooking");
+    const sessions = user.currentlyCooking ?? [];
+    const session = sessions.find((s) => s.mealId === args.mealId);
+    if (!session) throw new Error("Not currently cooking this meal");
 
-    await ctx.db.patch(user._id, {
-      currentlyCooking: {
-        ...cooking,
-        activeTimer: {
-          stepIndex: args.stepIndex,
-          endTime: Date.now() + args.durationSeconds * 1000,
-        },
-      },
-    });
+    const updated = sessions.map((s) =>
+      s.mealId === args.mealId
+        ? {
+            ...s,
+            activeTimer: {
+              stepIndex: args.stepIndex,
+              endTime: Date.now() + args.durationSeconds * 1000,
+            },
+          }
+        : s
+    );
+
+    await ctx.db.patch(user._id, { currentlyCooking: updated });
   },
 });
 
 export const clearTimer = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { mealId: v.id("meals") },
+  handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const cooking = user.currentlyCooking;
-    if (!cooking) return;
+    const sessions = user.currentlyCooking ?? [];
 
-    await ctx.db.patch(user._id, {
-      currentlyCooking: {
-        ...cooking,
-        activeTimer: undefined,
-      },
-    });
+    const updated = sessions.map((s) =>
+      s.mealId === args.mealId ? { ...s, activeTimer: undefined } : s
+    );
+
+    await ctx.db.patch(user._id, { currentlyCooking: updated });
   },
 });
 
@@ -206,7 +244,6 @@ export const setDefaultStore = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
-    // Verify store belongs to user if provided
     if (args.storeId) {
       const store = await ctx.db.get(args.storeId);
       if (!store || store.userId !== user._id) {
@@ -219,5 +256,23 @@ export const setDefaultStore = mutation({
     });
 
     return user._id;
+  },
+});
+
+// One-time migration: clear any users who have the old single-object currentlyCooking shape
+export const migrateClearLegacyCooking = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const allUsers = await ctx.db.query("users").collect();
+    let cleared = 0;
+    for (const user of allUsers) {
+      const cooking = user.currentlyCooking as any;
+      // Old shape was a plain object with mealId; new shape is an array
+      if (cooking !== undefined && !Array.isArray(cooking)) {
+        await ctx.db.patch(user._id, { currentlyCooking: undefined });
+        cleared++;
+      }
+    }
+    return { cleared };
   },
 });

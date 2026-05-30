@@ -59,6 +59,12 @@ export default function EditMealPage() {
     cookTime: meal.cookTime,
     servings: meal.servings,
     mealTimes: meal.mealTimes || [],
+    type: (meal.type ?? "meal") as "meal" | "side",
+    sideAttachments: (meal.sideAttachments ?? []).map((att: any) => ({
+      sideId: att.sideId,
+      name: att.name,
+      alwaysInclude: att.alwaysInclude,
+    })),
     ingredients: meal.ingredients.map((ing: any) => ({
       name: ing.name,
       amount: ing.amount ?? undefined,
@@ -84,6 +90,8 @@ export default function EditMealPage() {
       servings: data.servings,
       mealTimes: data.mealTimes,
       tagIds: data.tagIds as any,
+      type: data.type,
+      sideAttachments: data.sideAttachments as any,
       ingredients: data.ingredients.map((ing) => ({
         name: ing.name,
         amount: ing.amount,

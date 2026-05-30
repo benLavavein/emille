@@ -104,6 +104,8 @@ export default function AddMealPage() {
       servings: data.servings,
       mealTimes: data.mealTimes,
       tagIds: data.tagIds as any,
+      type: data.type,
+      sideAttachments: data.sideAttachments as any,
       ingredients: data.ingredients.map((ing) => ({
         name: ing.name,
         amount: ing.amount,
