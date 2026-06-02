@@ -24,6 +24,27 @@ async function generateUniqueFriendCode(ctx: MutationCtx): Promise<string> {
 // Queries
 // ---------------------------------------------------------------------------
 
+export const getPendingInboxCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+
+    const friendRequests = await ctx.db
+      .query("friendRequests")
+      .withIndex("by_to_user", (q) => q.eq("toUserId", user._id))
+      .collect();
+
+    const mealShares = await ctx.db
+      .query("mealShares")
+      .withIndex("by_to_user_and_status", (q) =>
+        q.eq("toUserId", user._id).eq("status", "pending"),
+      )
+      .collect();
+
+    return friendRequests.length + mealShares.length;
+  },
+});
+
 export const getMyFriendCode = query({
   args: {},
   handler: async (ctx) => {

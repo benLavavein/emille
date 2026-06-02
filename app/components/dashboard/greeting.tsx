@@ -60,9 +60,9 @@ const GREETINGS_NIGHT = [
   "What’s for dinner, {name}?",
   "Moon’s out, {name}!",
   "Evening glow, {name}!",
-  "Stars and stoves, {name}!",
+  "It's past your bedtime, {name}!",
   "Wind down, {name}?",
-  "Late kitchen, {name}?",
+  "You're still up, {name}?",
   "Night owl, {name}?",
   "After dark, {name}?",
   "Evening hunger, {name}?",
@@ -75,11 +75,11 @@ const GREETINGS_NIGHT = [
 
 export type GreetingTimeBand = "morning" | "generic" | "night";
 
-/** Which time band we’re in; “generic” = 11:00–17:59 (generic-only pool). */
+/** Which time band we’re in; “generic” = 11:00–19:59 (generic-only pool). */
 export function getTimeOfDayPeriod(date: Date): GreetingTimeBand {
   const h = date.getHours();
   if (h >= 5 && h < 11) return "morning";
-  if (h >= 11 && h < 18) return "generic";
+  if (h >= 11 && h < 20) return "generic";
   return "night";
 }
 

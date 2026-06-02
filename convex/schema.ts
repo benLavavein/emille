@@ -8,7 +8,6 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     friendCode: v.string(),
-    defaultStoreId: v.optional(v.id("groceryStores")),
     activeMealPlanId: v.optional(v.id("mealPlans")),
     currentlyCooking: v.optional(
       v.array(
@@ -98,20 +97,22 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_and_name", ["userId", "name"]),
 
-  // Grocery stores with sections and preferred shopping order
-  groceryStores: defineTable({
-    userId: v.id("users"),
-    name: v.string(),
-    sections: v.array(
-      v.object({
-        name: v.string(), // e.g., "Produce", "Dairy", "Frozen"
-        order: v.number(), // The order you visit this section (1, 2, 3, etc.)
-      })
+  // Meal sharing between friends
+  mealShares: defineTable({
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    mealId: v.id("meals"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined")
     ),
     createdAt: v.number(),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_and_name", ["userId", "name"]),
+    .index("by_to_user", ["toUserId"])
+    .index("by_from_user", ["fromUserId"])
+    .index("by_to_user_and_status", ["toUserId", "status"])
+    .index("by_from_and_to_and_meal", ["fromUserId", "toUserId", "mealId"]),
 
   // Meal plans — history snapshots; active plan is users.activeMealPlanId
   mealPlans: defineTable({

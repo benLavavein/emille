@@ -7,7 +7,7 @@ import { api } from "../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { OtterIcon } from "~/components/icons/otter";
-import { Copy, Check, UserPlus, Users, Send } from "lucide-react";
+import { Copy, Check, UserPlus, Users, Send, Inbox, UtensilsCrossed } from "lucide-react";
 
 export function meta() {
   return [
@@ -161,47 +161,67 @@ function SendRequestRow() {
 }
 
 // ---------------------------------------------------------------------------
-// Incoming requests
+// Inbox — friend requests + incoming meal shares
 // ---------------------------------------------------------------------------
 
-function IncomingRequestsList() {
-  const { data: requests } = useSuspenseQuery(
+function InboxList() {
+  const { data: friendRequests } = useSuspenseQuery(
     convexQuery(api.friends.getIncomingRequests, {}),
   );
-  const accept = useMutation(api.friends.acceptFriendRequest);
-  const decline = useMutation(api.friends.declineFriendRequest);
+  const { data: mealShares } = useSuspenseQuery(
+    convexQuery(api.mealShares.getIncoming, {}),
+  );
 
-  if (requests.length === 0) {
+  const acceptFriend = useMutation(api.friends.acceptFriendRequest);
+  const declineFriend = useMutation(api.friends.declineFriendRequest);
+  const acceptShare = useMutation(api.mealShares.accept);
+  const declineShare = useMutation(api.mealShares.decline);
+
+  const [acceptErrors, setAcceptErrors] = useState<Record<string, string>>({});
+
+  const handleAcceptShare = async (shareId: string) => {
+    try {
+      await acceptShare({ shareId: shareId as any });
+    } catch (e: unknown) {
+      const msg =
+        e instanceof Error ? e.message : "Something went wrong";
+      setAcceptErrors((prev) => ({ ...prev, [shareId]: msg }));
+    }
+  };
+
+  const isEmpty = friendRequests.length === 0 && mealShares.length === 0;
+
+  if (isEmpty) {
     return (
       <div className="bg-white/40 backdrop-blur-sm border border-blush/30 rounded-2xl py-8 flex items-center justify-center">
-        <p className="text-mauve/60 text-sm">
-          Incoming requests will show up here
-        </p>
+        <p className="text-mauve/60 text-sm">Your inbox is empty</p>
       </div>
     );
   }
 
   return (
     <ul className="flex flex-col gap-2">
-      {requests.map((req) => (
+      {/* Friend requests */}
+      {friendRequests.map((req) => (
         <li
           key={req.requestId}
           className="flex items-center justify-between gap-3 bg-white/60 backdrop-blur-sm border border-blush/40 rounded-xl px-4 py-3"
         >
-          <div className="flex flex-col min-w-0">
-            <span className="font-medium text-plum truncate">
-              {req.fromName}
-            </span>
-            {req.fromFriendCode && (
-              <span className="text-xs font-mono text-mauve tracking-wider">
-                {req.fromFriendCode}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-8 rounded-full bg-plum/10 flex items-center justify-center shrink-0">
+              <UserPlus className="size-4 text-plum" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-medium text-plum truncate">
+                {req.fromName}
               </span>
-            )}
+              <span className="text-xs text-mauve/60">Friend request</span>
+            </div>
           </div>
           <div className="flex gap-2 shrink-0">
             <Button
               size="sm"
-              onClick={() => accept({ requestId: req.requestId })}
+              onClick={() => acceptFriend({ requestId: req.requestId })}
             >
               Accept
             </Button>
@@ -209,11 +229,59 @@ function IncomingRequestsList() {
               size="sm"
               variant="ghost"
               className="text-mauve hover:text-plum"
-              onClick={() => decline({ requestId: req.requestId })}
+              onClick={() => declineFriend({ requestId: req.requestId })}
             >
               Decline
             </Button>
           </div>
+        </li>
+      ))}
+
+      {/* Meal shares */}
+      {mealShares.map((share) => (
+        <li key={share.shareId} className="flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-3 bg-white/60 backdrop-blur-sm border border-blush/40 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="size-8 rounded-full bg-peach/50 flex items-center justify-center shrink-0">
+                <UtensilsCrossed className="size-4 text-plum" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="font-medium text-plum truncate">
+                  {share.mealName}
+                </span>
+                <span className="text-xs text-mauve/60">
+                  From {share.fromName}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button
+                size="sm"
+                disabled={share.mealDeleted}
+                onClick={() => handleAcceptShare(share.shareId)}
+              >
+                Accept
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-mauve hover:text-plum"
+                onClick={() => declineShare({ shareId: share.shareId as any })}
+              >
+                Decline
+              </Button>
+            </div>
+          </div>
+          {share.mealDeleted && (
+            <p className="text-xs text-destructive px-2">
+              This recipe was deleted by the sender.
+            </p>
+          )}
+          {acceptErrors[share.shareId] && (
+            <p className="text-xs text-destructive px-2">
+              {acceptErrors[share.shareId]}
+            </p>
+          )}
         </li>
       ))}
     </ul>
@@ -294,13 +362,14 @@ export default function FriendsPage() {
         <SendRequestRow />
       </div>
 
-      {/* Incoming requests */}
+      {/* Inbox */}
       <section>
-        <h2 className="text-sm font-semibold text-mauve uppercase tracking-wider mb-3">
-          Incoming Requests
+        <h2 className="text-sm font-semibold text-mauve uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Inbox className="size-4" />
+          Inbox
         </h2>
         <Suspense fallback={<CardSkeleton rows={2} />}>
-          <IncomingRequestsList />
+          <InboxList />
         </Suspense>
       </section>
 

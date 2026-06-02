@@ -9,9 +9,9 @@
  */
 
 import type * as friends from "../friends.js";
-import type * as groceryStores from "../groceryStores.js";
 import type * as importRecipe from "../importRecipe.js";
 import type * as mealPlans from "../mealPlans.js";
+import type * as mealShares from "../mealShares.js";
 import type * as meals from "../meals.js";
 import type * as shoppingList from "../shoppingList.js";
 import type * as tags from "../tags.js";
@@ -25,9 +25,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   friends: typeof friends;
-  groceryStores: typeof groceryStores;
   importRecipe: typeof importRecipe;
   mealPlans: typeof mealPlans;
+  mealShares: typeof mealShares;
   meals: typeof meals;
   shoppingList: typeof shoppingList;
   tags: typeof tags;

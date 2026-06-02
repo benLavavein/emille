@@ -271,37 +271,41 @@ function IngredientsOverlay({
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto px-6 py-4 relative w-full">
-        {ingredients.length === 0 ? (
-          <p className="text-mauve/60 text-sm text-center mt-8 italic grow justify-center">
-            No ingredients here. <br />
-            At least it's low on calories!
-          </p>
-        ) : (
-          <div className="divide-y divide-blush/30">
-            {ingredients.map((ing, i) => (
-              <div key={i} className="flex items-center gap-3 py-3">
-                <span className="text-mauve min-w-20 text-sm">
-                  {[formatAmount(ing.amount), ing.unit]
-                    .filter(Boolean)
-                    .join(" ") || "—"}
-                </span>
-                <span className="font-medium text-plum">{ing.name}</span>
-                {ing.notes && (
-                  <span className="text-mauve/70 text-sm">({ing.notes})</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="max-w-2xl mx-auto">
+          {ingredients.length === 0 ? (
+            <p className="text-mauve/60 text-sm text-center mt-8 italic grow justify-center">
+              No ingredients here. <br />
+              At least it's low on calories!
+            </p>
+          ) : (
+            <div className="divide-y divide-blush/30">
+              {ingredients.map((ing, i) => (
+                <div key={i} className="flex items-center gap-3 py-3">
+                  <span className="text-mauve min-w-20 text-sm">
+                    {[formatAmount(ing.amount), ing.unit]
+                      .filter(Boolean)
+                      .join(" ") || "—"}
+                  </span>
+                  <span className="font-medium text-plum">{ing.name}</span>
+                  {ing.notes && (
+                    <span className="text-mauve/70 text-sm">({ing.notes})</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       {hasSteps && (
-        <button
-          onClick={onClose}
-          className="w-[90%] py-5 m-4 rounded-xl bg-orange-400/20 text-orange-500 font-semibold text-base hover:bg-orange-400/30 transition-colors flex items-center justify-center gap-2"
-        >
-          <ListOrdered className="size-5" />
-          Instructions
-        </button>
+        <div className="w-full max-w-2xl mx-auto px-4 pb-8">
+          <button
+            onClick={onClose}
+            className="w-full py-5 rounded-xl bg-plum text-white font-semibold text-base hover:bg-plum/90 transition-colors flex items-center justify-center gap-2"
+          >
+            <ListOrdered className="size-5" />
+            Instructions
+          </button>
+        </div>
       )}
     </motion.div>
   );
@@ -546,10 +550,13 @@ export default function CookPage() {
           {/* Floating ingredients button */}
           <button
             onClick={() => setShowIngredients(true)}
-            className="fixed bottom-20 right-4 z-55 bg-orange-400/20 border-orange-400/20 rounded-xl p-8 shadow-sm hover:bg-orange-400/30 transition-colors text-orange-400/50 hover:text-orange-400/70"
+            className="fixed bottom-20 right-4 md:bottom-24 md:right-12 z-55 bg-orange-400/20 border-orange-400/20 rounded-xl p-8 md:px-10 md:py-6 shadow-sm hover:bg-orange-400/60 transition-colors text-orange-400/90 hover:text-white flex items-center gap-3"
             title="View ingredients"
           >
-            <Carrot className="size-7" />
+            <Carrot className="size-7 md:size-6" />
+            <span className="hidden md:inline font-semibold text-lg">
+              Ingredients
+            </span>
           </button>
 
           {/* Ingredients overlay */}

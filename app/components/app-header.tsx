@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useUser, useClerk } from "@clerk/react-router";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import {
   Menu,
   Home,
   UtensilsCrossed,
-  Store,
   Calendar,
   ShoppingCart,
   LogOut,
@@ -27,10 +28,18 @@ export const navLinks = [
   { href: "/", label: "Home", icon: Home },
   { href: "/meals", label: "Meals", icon: UtensilsCrossed },
   { href: "/meal-plan", label: "Meal plan", icon: Calendar },
-  { href: "/stores", label: "Stores", icon: Store },
   { href: "/shopping-list", label: "Shopping List", icon: ShoppingCart },
   { href: "/friends", label: "Friends", icon: Users },
 ];
+
+function NotiBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="absolute -top-1 -right-1 min-w-4.5 h-4.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none pointer-events-none">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 function MobileHeader() {
   const location = useLocation();
@@ -39,6 +48,7 @@ function MobileHeader() {
   const { signOut } = useClerk();
   const firstName = user?.firstName || user?.username || "User";
   const { backUrl } = useBackButton();
+  const pendingCount = useQuery(api.friends.getPendingInboxCount) ?? 0;
 
   const effectiveBackUrl = backUrl ?? "/";
 
@@ -59,8 +69,9 @@ function MobileHeader() {
       </Link>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <button className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+          <button className="relative p-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <Menu className="size-6" />
+            <NotiBadge count={pendingCount} />
           </button>
         </SheetTrigger>
         <SheetContent
@@ -81,12 +92,13 @@ function MobileHeader() {
                 href === "/"
                   ? location.pathname === "/"
                   : location.pathname.startsWith(href);
+              const isFriends = href === "/friends";
               return (
                 <Link
                   key={href}
                   to={href}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center gap-4 px-4 py-3.5 rounded-xl text-lg font-medium transition-colors ${
+                  className={`relative flex items-center gap-4 px-4 py-3.5 rounded-xl text-lg font-medium transition-colors ${
                     isActive
                       ? "bg-plum/10 text-plum"
                       : "text-mauve hover:bg-blush/30 hover:text-plum"
@@ -94,6 +106,11 @@ function MobileHeader() {
                 >
                   <Icon className="size-5" />
                   {label}
+                  {isFriends && pendingCount > 0 && (
+                    <span className="ml-auto min-w-5.5 h-5.5 rounded-full bg-rose-500 text-white text-xs font-bold flex items-center justify-center px-1.5 leading-none">
+                      {pendingCount > 99 ? "99+" : pendingCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -125,6 +142,7 @@ function DesktopSidebar() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const firstName = user?.firstName || user?.username || "User";
+  const pendingCount = useQuery(api.friends.getPendingInboxCount) ?? 0;
 
   return (
     <aside className="hidden h-full min-h-0 w-72 shrink-0 flex-col bg-plum text-white md:flex">
@@ -138,6 +156,7 @@ function DesktopSidebar() {
             href === "/"
               ? location.pathname === "/"
               : location.pathname.startsWith(href);
+          const isFriends = href === "/friends";
           return (
             <Link
               key={href}
@@ -150,6 +169,11 @@ function DesktopSidebar() {
             >
               <Icon className="size-5" />
               {label}
+              {isFriends && pendingCount > 0 && (
+                <span className="ml-auto min-w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none">
+                  {pendingCount > 99 ? "99+" : pendingCount}
+                </span>
+              )}
             </Link>
           );
         })}

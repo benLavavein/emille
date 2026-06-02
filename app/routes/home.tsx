@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { HeroGreeting } from "~/components/dashboard/greeting";
 import { CookingCard } from "~/components/dashboard/cooking-card";
 import { CurrentMealPlan } from "~/components/dashboard/currentMealPlan";
-import { BookHeart, ShoppingCart } from "lucide-react";
+import { BookHeart } from "lucide-react";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -68,7 +68,7 @@ function HomeDashboard() {
       </div>
 
       {/* Feature Cards */}
-      <div className="grid md:grid-cols-2 gap-6 mb-12">
+      <div className="grid gap-6 mb-12">
         <FeatureCard
           title="Meals"
           description="Create and organize your favorite recipes with ingredients and step-by-step instructions."
@@ -76,19 +76,6 @@ function HomeDashboard() {
           color="plum"
           icon={
             <BookHeart
-              className="size-10"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            />
-          }
-        />
-        <FeatureCard
-          title="Grocery Stores"
-          description="Set up your stores with aisles in your preferred shopping order."
-          href="/stores"
-          color="peach"
-          icon={
-            <ShoppingCart
               className="size-10"
               stroke="currentColor"
               strokeWidth={1.5}

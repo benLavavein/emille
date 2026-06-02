@@ -25,11 +25,13 @@ import {
   CookingPot,
   X,
   Users,
+  Share2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 import { CookButton } from "./components/cook-button";
 import { SideCard } from "./components/side-card";
+import { ShareMealDialog } from "./components/share-meal-dialog";
 import type { Id } from "convex/_generated/dataModel";
 
 const FRACTION_MAP: [number, string][] = [
@@ -85,6 +87,7 @@ export default function MealDetailsPage() {
   const deleteMeal = useMutation(api.meals.remove);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   const cookingSession = (cookingSessions ?? []).filter(Boolean).find(
     (s) => s!.mealId === mealId,
@@ -183,6 +186,12 @@ export default function MealDetailsPage() {
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
+                    onClick={() => setShowShareDialog(true)}
+                  >
+                    <Share2 className="size-5 mr-2" />
+                    Share
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => setShowDeleteConfirm(true)}
                     className="text-destructive focus:text-destructive"
                   >
@@ -221,6 +230,12 @@ export default function MealDetailsPage() {
                     >
                       <Pencil className="size-5 mr-2" />
                       Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setShowShareDialog(true)}
+                    >
+                      <Share2 className="size-5 mr-2" />
+                      Share
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setShowDeleteConfirm(true)}
@@ -451,6 +466,13 @@ export default function MealDetailsPage() {
           </TabsContent>
         </div>
       </div>
+
+      <ShareMealDialog
+        mealId={mealId}
+        mealName={meal.name}
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+      />
     </Tabs>
   );
 }
