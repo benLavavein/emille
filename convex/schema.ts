@@ -8,6 +8,7 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     friendCode: v.string(),
+    lastLoginAt: v.optional(v.number()),
     activeMealPlanId: v.optional(v.id("mealPlans")),
     currentlyCooking: v.optional(
       v.array(

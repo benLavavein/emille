@@ -74,6 +74,7 @@ export const upsertUser = mutation({
       await ctx.db.patch(existingUser._id, {
         email: identity.email || existingUser.email,
         name: identity.name || existingUser.name,
+        lastLoginAt: Date.now(),
       });
       return existingUser._id;
     }
@@ -84,6 +85,7 @@ export const upsertUser = mutation({
       email: identity.email || "",
       name: identity.name,
       friendCode,
+      lastLoginAt: Date.now(),
     });
 
     return userId;
