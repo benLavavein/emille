@@ -10,10 +10,24 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
-import { clerkMiddleware, rootAuthLoader } from '@clerk/react-router/server'
-import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react-router";
+import { clerkMiddleware, rootAuthLoader } from "@clerk/react-router/server";
+import {
+  ClerkLoaded,
+  ClerkLoading,
+  ClerkProvider,
+  SignIn,
+  SignUp,
+  useAuth,
+} from "@clerk/react-router";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { Authenticated, ConvexReactClient, Unauthenticated, useMutation, useConvexAuth } from "convex/react";
+import {
+  Authenticated,
+  AuthLoading,
+  ConvexReactClient,
+  Unauthenticated,
+  useMutation,
+  useConvexAuth,
+} from "convex/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { api } from "../convex/_generated/api";
@@ -47,11 +61,9 @@ function UserSync() {
   return null;
 }
 
+export const middleware = [clerkMiddleware()];
 
-export const middleware = [clerkMiddleware()]
-
-export const loader = (args: Route.LoaderArgs) => rootAuthLoader(args)
-
+export const loader = (args: Route.LoaderArgs) => rootAuthLoader(args);
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -105,10 +117,21 @@ const clerkAppearance = {
   variables: { colorPrimary: "#574964" },
   elements: {
     header: { display: "none" } as React.CSSProperties,
-    card: { boxShadow: "none", border: "none", backgroundColor: "transparent" } as React.CSSProperties,
-    cardBox: { boxShadow: "none", border: "none", backgroundColor: "transparent" } as React.CSSProperties,
+    card: {
+      boxShadow: "none",
+      border: "none",
+      backgroundColor: "transparent",
+    } as React.CSSProperties,
+    cardBox: {
+      boxShadow: "none",
+      border: "none",
+      backgroundColor: "transparent",
+    } as React.CSSProperties,
     footer: { display: "none" } as React.CSSProperties,
-    socialButtonsBlockButton: { backgroundColor: "white", border: "1px solid #e5e5e5" } as React.CSSProperties,
+    socialButtonsBlockButton: {
+      backgroundColor: "white",
+      border: "1px solid #e5e5e5",
+    } as React.CSSProperties,
   },
 };
 
@@ -116,36 +139,52 @@ function AuthScreen() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <OtterIcon className="w-40 h-40 mx-auto mb-4 text-plum" />
-        <h1 className="text-4xl font-bold text-plum mb-4">Emille</h1>
-        <p className="text-mauve mb-6">
-          {mode === "signin" ? "Sign in to manage your meals" : "Create your account"}
-        </p>
-        {mode === "signin" ? (
-          <SignIn routing="hash" appearance={clerkAppearance} />
-        ) : (
-          <SignUp routing="hash" appearance={clerkAppearance} />
-        )}
-        <p className="text-sm text-mauve mt-2">
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <OtterIcon className="w-40 h-40 mx-auto mb-4 text-plum" />
+      <h1 className="text-4xl font-bold text-plum mb-4">Emille</h1>
+      <p className="text-mauve mb-6">
+        {mode === "signin"
+          ? "Sign in to manage your meals"
+          : "Create your account"}
+      </p>
+      <ClerkLoading>
+        <div className="animate-pulse space-y-8 px-6 py-15 h-50 max-w-[370px] w-full">
+          <div className="h-7 rounded-md bg-plum/8" />
+          <div className="h-7 rounded-md bg-plum/8" />
+        </div>
+      </ClerkLoading>
+      <ClerkLoaded>
+        <div className="h-50">
           {mode === "signin" ? (
-            <>
-              No account?{" "}
-              <button onClick={() => setMode("signup")} className="font-medium text-plum hover:underline">
-                Sign up
-              </button>
-            </>
+            <SignIn routing="hash" appearance={clerkAppearance} />
           ) : (
-            <>
-              Already have an account?{" "}
-              <button onClick={() => setMode("signin")} className="font-medium text-plum hover:underline">
-                Sign in
-              </button>
-            </>
+            <SignUp routing="hash" appearance={clerkAppearance} />
           )}
-        </p>
-      </div>
+        </div>
+      </ClerkLoaded>
+      <p className="text-sm text-mauve mt-2">
+        {mode === "signin" ? (
+          <>
+            No account?{" "}
+            <button
+              onClick={() => setMode("signup")}
+              className="font-medium text-plum hover:underline"
+            >
+              Sign up
+            </button>
+          </>
+        ) : (
+          <>
+            Already have an account?{" "}
+            <button
+              onClick={() => setMode("signin")}
+              className="font-medium text-plum hover:underline"
+            >
+              Sign in
+            </button>
+          </>
+        )}
+      </p>
     </div>
   );
 }
@@ -155,27 +194,35 @@ export default function App({ loaderData }: Route.ComponentProps) {
     <ClerkProvider loaderData={loaderData}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <QueryClientProvider client={queryClient}>
-        <main>
-          <Unauthenticated>
-            <AuthScreen />
-          </Unauthenticated>
-          <Authenticated>
-            <UserSync />
-            <BackButtonProvider>
-              <div className="flex h-screen min-h-0 flex-col overflow-hidden">
-                <div className="shrink-0">
-                  <AppHeader />
-                </div>
-                <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
-                  <DesktopSidebar />
-                  <div className="min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
-                    <Outlet />
-                  </div>
+          <main>
+            <AuthLoading>
+              <div className="flex items-center justify-center min-h-screen">
+                <div className="flex flex-col items-center gap-6">
+                  <OtterIcon className="w-24 h-24 text-plum" />
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-plum/30 border-t-plum" />
                 </div>
               </div>
-            </BackButtonProvider>
-          </Authenticated>
-        </main>
+            </AuthLoading>
+            <Unauthenticated>
+              <AuthScreen />
+            </Unauthenticated>
+            <Authenticated>
+              <UserSync />
+              <BackButtonProvider>
+                <div className="flex h-screen min-h-0 flex-col overflow-hidden">
+                  <div className="shrink-0">
+                    <AppHeader />
+                  </div>
+                  <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
+                    <DesktopSidebar />
+                    <div className="min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+                      <Outlet />
+                    </div>
+                  </div>
+                </div>
+              </BackButtonProvider>
+            </Authenticated>
+          </main>
         </QueryClientProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
