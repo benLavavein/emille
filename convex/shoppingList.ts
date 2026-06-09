@@ -1,6 +1,21 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { requireUser, getCurrentUser } from "./users";
+import { getMySoulmateRow } from "./soulmates";
+import type { Id } from "./_generated/dataModel";
+
+/** Returns the userId whose shoppingLists document should be used.
+ *  If shopping list sharing is active, that's always user1Id (the soulmate sender). */
+async function resolveListOwner(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+): Promise<Id<"users">> {
+  const soulmateResult = await getMySoulmateRow(ctx, userId);
+  if (soulmateResult && soulmateResult.row.sharing.shoppingList) {
+    return soulmateResult.row.user1Id;
+  }
+  return userId;
+}
 
 function normalizeForSort(name: string): string {
   return name.trim().toLowerCase().replace(/e?s$/, "");
@@ -12,9 +27,10 @@ export const get = query({
     const user = await getCurrentUser(ctx);
     if (!user) return { items: [] };
 
+    const listOwner = await resolveListOwner(ctx, user._id);
     const shoppingList = await ctx.db
       .query("shoppingLists")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user", (q) => q.eq("userId", listOwner))
       .first();
 
     if (!shoppingList) {
@@ -36,10 +52,11 @@ export const addItem = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    const listOwner = await resolveListOwner(ctx, user._id);
 
     let shoppingList = await ctx.db
       .query("shoppingLists")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user", (q) => q.eq("userId", listOwner))
       .first();
 
     const newItem = {
@@ -58,7 +75,7 @@ export const addItem = mutation({
       return shoppingList._id;
     } else {
       return await ctx.db.insert("shoppingLists", {
-        userId: user._id,
+        userId: listOwner,
         items: [newItem],
       });
     }
@@ -71,10 +88,11 @@ export const toggleItem = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    const listOwner = await resolveListOwner(ctx, user._id);
 
     const shoppingList = await ctx.db
       .query("shoppingLists")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user", (q) => q.eq("userId", listOwner))
       .first();
 
     if (!shoppingList) {
@@ -96,10 +114,11 @@ export const removeItem = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    const listOwner = await resolveListOwner(ctx, user._id);
 
     const shoppingList = await ctx.db
       .query("shoppingLists")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user", (q) => q.eq("userId", listOwner))
       .first();
 
     if (!shoppingList) {
@@ -121,10 +140,11 @@ export const reorderItems = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    const listOwner = await resolveListOwner(ctx, user._id);
 
     const shoppingList = await ctx.db
       .query("shoppingLists")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user", (q) => q.eq("userId", listOwner))
       .first();
 
     if (!shoppingList) {
@@ -148,10 +168,11 @@ export const clearChecked = mutation({
   args: {},
   handler: async (ctx) => {
     const user = await requireUser(ctx);
+    const listOwner = await resolveListOwner(ctx, user._id);
 
     const shoppingList = await ctx.db
       .query("shoppingLists")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user", (q) => q.eq("userId", listOwner))
       .first();
 
     if (!shoppingList) {
@@ -171,10 +192,11 @@ export const clearAll = mutation({
   args: {},
   handler: async (ctx) => {
     const user = await requireUser(ctx);
+    const listOwner = await resolveListOwner(ctx, user._id);
 
     const shoppingList = await ctx.db
       .query("shoppingLists")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user", (q) => q.eq("userId", listOwner))
       .first();
 
     if (!shoppingList) {
@@ -192,6 +214,7 @@ export const addFromMealPlan = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    const listOwner = await resolveListOwner(ctx, user._id);
 
     const mealPlan = await ctx.db.get(args.mealPlanId);
     if (!mealPlan || mealPlan.userId !== user._id) {
@@ -200,7 +223,7 @@ export const addFromMealPlan = mutation({
 
     let shoppingList = await ctx.db
       .query("shoppingLists")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user", (q) => q.eq("userId", listOwner))
       .first();
 
     const existingItems = shoppingList?.items || [];
@@ -260,7 +283,7 @@ export const addFromMealPlan = mutation({
       return shoppingList._id;
     } else {
       return await ctx.db.insert("shoppingLists", {
-        userId: user._id,
+        userId: listOwner,
         items: allItems,
       });
     }

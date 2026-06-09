@@ -97,6 +97,34 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_and_name", ["userId", "name"]),
 
+  // Soulmate requests (pending)
+  soulmateRequests: defineTable({
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    status: v.literal("pending"),
+    proposedSharing: v.object({
+      meals: v.boolean(),
+      shoppingList: v.boolean(),
+    }),
+    createdAt: v.number(),
+  })
+    .index("by_to_user", ["toUserId"])
+    .index("by_from_user", ["fromUserId"])
+    .index("by_from_and_to", ["fromUserId", "toUserId"]),
+
+  // Active soulmate relationships (one per user enforced by unique indexes)
+  soulmates: defineTable({
+    user1Id: v.id("users"), // always the request sender
+    user2Id: v.id("users"), // always the request recipient
+    sharing: v.object({
+      meals: v.boolean(),
+      shoppingList: v.boolean(),
+    }),
+    createdAt: v.number(),
+  })
+    .index("by_user1", ["user1Id"])
+    .index("by_user2", ["user2Id"]),
+
   // Meal sharing between friends
   mealShares: defineTable({
     fromUserId: v.id("users"),

@@ -14,6 +14,7 @@ import type * as mealPlans from "../mealPlans.js";
 import type * as mealShares from "../mealShares.js";
 import type * as meals from "../meals.js";
 import type * as shoppingList from "../shoppingList.js";
+import type * as soulmates from "../soulmates.js";
 import type * as tags from "../tags.js";
 import type * as users from "../users.js";
 
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   mealShares: typeof mealShares;
   meals: typeof meals;
   shoppingList: typeof shoppingList;
+  soulmates: typeof soulmates;
   tags: typeof tags;
   users: typeof users;
 }>;

@@ -3,7 +3,8 @@ import { Link } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
-import { GripVertical, Plus, Check, X } from "lucide-react";
+import { GripVertical, Plus, Check, X, Trash2 } from "lucide-react";
+import { Input } from "~/components/ui/input";
 
 export function meta() {
   return [
@@ -17,7 +18,9 @@ function formatQuantity(amount?: number, unit?: string): string | null {
   const parts: string[] = [];
   if (amount != null) {
     parts.push(
-      Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace(/0+$/, "").replace(/\.$/, ""),
+      Number.isInteger(amount)
+        ? String(amount)
+        : amount.toFixed(2).replace(/0+$/, "").replace(/\.$/, ""),
     );
   }
   if (unit) parts.push(unit);
@@ -31,13 +34,17 @@ export default function ShoppingListPage() {
   const removeItem = useMutation(api.shoppingList.removeItem);
   const reorderItems = useMutation(api.shoppingList.reorderItems);
   const clearChecked = useMutation(api.shoppingList.clearChecked);
+  const clearAll = useMutation(api.shoppingList.clearAll);
 
   const [newItemName, setNewItemName] = useState("");
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 
   const items = useMemo(() => {
     if (!shoppingList?.items) return [];
-    return [...shoppingList.items].sort((a, b) => a.order - b.order);
+    return [...shoppingList.items].sort((a, b) => {
+      if (a.checked !== b.checked) return a.checked ? 1 : -1;
+      return a.order - b.order;
+    });
   }, [shoppingList?.items]);
 
   const handleAddItem = async () => {
@@ -85,18 +92,12 @@ export default function ShoppingListPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <Link
-          to="/"
-          className="text-mauve hover:text-plum transition-colors text-sm mb-2 inline-block"
-        >
-          &larr; Back to home
-        </Link>
         <h1 className="text-3xl font-bold text-plum">Shopping List</h1>
       </div>
 
       {/* Add Item */}
-      <div className="flex gap-2 mb-6">
-        <input
+      <div className="flex gap-2 mb-6 items-center">
+        <Input
           type="text"
           value={newItemName}
           onChange={(e) => setNewItemName(e.target.value)}
@@ -107,29 +108,41 @@ export default function ShoppingListPage() {
             }
           }}
           placeholder="Add an item..."
-          className="flex-1 px-4 py-3 rounded-xl border border-blush/50 bg-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-plum/30 focus:border-plum/50 text-plum placeholder:text-mauve/50"
         />
-        <Button onClick={handleAddItem} disabled={!newItemName.trim()}>
+        <Button
+          size="icon"
+          onClick={handleAddItem}
+          disabled={!newItemName.trim()}
+        >
           <Plus className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* List Stats */}
+      {/* List Stats + clear actions */}
       {items.length > 0 && (
         <div className="flex items-center justify-between mb-4 text-sm text-mauve">
-          <span>
-            {uncheckedCount} item{uncheckedCount !== 1 ? "s" : ""} remaining
-          </span>
-          {checkedCount > 0 && (
+          <div className="flex items-center gap-1">
+            {checkedCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => clearChecked()}
+                className="text-mauve hover:text-destructive gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                Clear checked
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => clearChecked()}
-              className="text-mauve hover:text-destructive"
+              onClick={() => clearAll()}
+              className="text-mauve hover:text-destructive gap-1.5"
             >
-              Clear {checkedCount} checked
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear all
             </Button>
-          )}
+          </div>
         </div>
       )}
 
@@ -157,15 +170,6 @@ export default function ShoppingListPage() {
           <h2 className="text-xl font-semibold text-plum mb-2">
             Your list is empty
           </h2>
-          <p className="text-mauve mb-4">
-            Add items manually or from a meal plan
-          </p>
-          <Link
-            to="/meal-plan"
-            className="text-plum hover:underline font-medium"
-          >
-            Go to meal plan
-          </Link>
         </div>
       ) : (
         <div className="space-y-2">

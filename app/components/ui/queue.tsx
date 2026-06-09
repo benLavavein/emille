@@ -23,7 +23,7 @@ export type QueueSearchProps = {
 };
 
 export type QueueHeaderProps = {
-  title: string;
+  title: React.ReactNode;
   /** Shown on small screens only. */
   mobileBackUrl?: string;
   /** If set, renders the add action linking here (e.g. `/meals/add`). */
@@ -61,7 +61,11 @@ export function QueueHeader({
     <header className="shrink-0 border-b border-blush/40 bg-white/80 pt-3 pb-2 backdrop-blur-md md:pt-4 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2 px-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <h1 className="truncate text-lg font-bold text-plum px-3">{title}</h1>
+          {typeof title === "string" ? (
+            <h1 className="truncate text-lg font-bold text-plum px-3">{title}</h1>
+          ) : (
+            title
+          )}
         </div>
         {addTo ? (
           <Link

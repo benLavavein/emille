@@ -41,7 +41,12 @@ export const getPendingInboxCount = query({
       )
       .collect();
 
-    return friendRequests.length + mealShares.length;
+    const soulmateRequests = await ctx.db
+      .query("soulmateRequests")
+      .withIndex("by_to_user", (q) => q.eq("toUserId", user._id))
+      .collect();
+
+    return friendRequests.length + mealShares.length + soulmateRequests.length;
   },
 });
 
@@ -197,6 +202,64 @@ export const acceptFriendRequest = mutation({
       friendId: me._id,
       createdAt: now,
     });
+  },
+});
+
+export const unfriend = mutation({
+  args: { friendId: v.id("users") },
+  handler: async (ctx, args) => {
+    const me = await requireUser(ctx);
+
+    // Delete both symmetric friendship rows
+    const myRow = await ctx.db
+      .query("friendships")
+      .withIndex("by_user_and_friend", (q) =>
+        q.eq("userId", me._id).eq("friendId", args.friendId),
+      )
+      .unique();
+    if (myRow) await ctx.db.delete(myRow._id);
+
+    const theirRow = await ctx.db
+      .query("friendships")
+      .withIndex("by_user_and_friend", (q) =>
+        q.eq("userId", args.friendId).eq("friendId", me._id),
+      )
+      .unique();
+    if (theirRow) await ctx.db.delete(theirRow._id);
+
+    // Also dissolve any soulmate relationship between them
+    const soulmateAsUser1 = await ctx.db
+      .query("soulmates")
+      .withIndex("by_user1", (q) => q.eq("user1Id", me._id))
+      .unique();
+    if (soulmateAsUser1 && soulmateAsUser1.user2Id === args.friendId) {
+      await ctx.db.delete(soulmateAsUser1._id);
+    }
+
+    const soulmateAsUser2 = await ctx.db
+      .query("soulmates")
+      .withIndex("by_user2", (q) => q.eq("user2Id", me._id))
+      .unique();
+    if (soulmateAsUser2 && soulmateAsUser2.user1Id === args.friendId) {
+      await ctx.db.delete(soulmateAsUser2._id);
+    }
+
+    // Cancel any pending soulmate requests between them
+    const outgoingReq = await ctx.db
+      .query("soulmateRequests")
+      .withIndex("by_from_and_to", (q) =>
+        q.eq("fromUserId", me._id).eq("toUserId", args.friendId),
+      )
+      .first();
+    if (outgoingReq) await ctx.db.delete(outgoingReq._id);
+
+    const incomingReq = await ctx.db
+      .query("soulmateRequests")
+      .withIndex("by_from_and_to", (q) =>
+        q.eq("fromUserId", args.friendId).eq("toUserId", me._id),
+      )
+      .first();
+    if (incomingReq) await ctx.db.delete(incomingReq._id);
   },
 });
 

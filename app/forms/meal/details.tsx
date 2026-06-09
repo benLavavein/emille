@@ -30,7 +30,7 @@ export function MealDetailsSection({ form }: Props) {
 
   return (
     <>
-      {/* Type toggle — Meal or Side dish */}
+      {/* Type toggle — Meal or Pairing */}
       <form.Field name="type">
         {(field) => (
           <div className="flex gap-2">
@@ -48,7 +48,7 @@ export function MealDetailsSection({ form }: Props) {
               onClick={() => field.handleChange("side")}
               className="flex-1"
             >
-              Side dish
+              Pairing
             </Button>
           </div>
         )}
@@ -272,7 +272,7 @@ export function MealDetailsSection({ form }: Props) {
         }}
       </form.Field>
 
-      {/* Side dishes — only for meals */}
+      {/* Pairings — only for meals */}
       <form.Subscribe selector={(state) => state.values.type}>
         {(type) =>
           type === "meal" ? (
@@ -287,12 +287,12 @@ export function MealDetailsSection({ form }: Props) {
                 return (
                   <div>
                     <label className="block text-sm font-medium text-plum mb-2">
-                      Side dishes
+                      Pairings
                     </label>
                     <Combobox
                       items={sideItems}
-                      placeholder="Attach a side dish..."
-                      emptyText="No side dishes found. Create one first."
+                      placeholder="Attach a pairing..."
+                      emptyText="No pairings found. Create one first."
                       onSelect={(item) => {
                         field.handleChange([
                           ...field.state.value,

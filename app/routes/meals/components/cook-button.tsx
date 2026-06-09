@@ -116,10 +116,10 @@ export function CookButton({
               className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl p-6 shadow-xl md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-sm md:rounded-2xl"
             >
               <h2 className="text-lg font-semibold text-plum mb-1">
-                Cook with sides?
+                Cook with pairings?
               </h2>
               <p className="text-sm text-mauve mb-4">
-                Choose which sides to cook alongside this meal.
+                Choose which pairings to cook alongside this meal.
               </p>
 
               {autoSides.length > 0 && (

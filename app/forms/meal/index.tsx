@@ -78,7 +78,9 @@ type MealFormProps = {
   onCancel: () => void;
   submitLabel: string;
   submittingLabel: string;
-  title: string;
+  title?: string;
+  /** Optional content rendered between the title and the form fields. */
+  headerSlot?: React.ReactNode;
 };
 
 export function MealForm({
@@ -88,6 +90,7 @@ export function MealForm({
   submitLabel,
   submittingLabel,
   title,
+  headerSlot,
 }: MealFormProps) {
   const form = useForm({
     defaultValues: {
@@ -161,7 +164,8 @@ export function MealForm({
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 pb-24 md:pb-8 flex flex-col min-h-[calc(100vh-6rem)]">
-      <h1 className="text-3xl font-bold text-plum mb-8">{title}</h1>
+      {title && <h1 className="text-3xl font-bold text-plum mb-8">{title}</h1>}
+      {headerSlot}
 
       <form
         onSubmit={(e) => {

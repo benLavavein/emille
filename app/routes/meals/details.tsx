@@ -26,6 +26,7 @@ import {
   X,
   Users,
   Share2,
+  Heart,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
@@ -172,52 +173,7 @@ export default function MealDetailsPage() {
           {/* Mobile header */}
           <div className="md:hidden">
             <div className="flex items-center justify-end gap-0.5">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="size-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => navigate(`/meals/${mealId}/edit`)}
-                  >
-                    <Pencil className="size-5 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowShareDialog(true)}
-                  >
-                    <Share2 className="size-5 mr-2" />
-                    Share
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="size-5 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/meals")}
-              >
-                <X className="size-5" />
-              </Button>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight line-clamp-3 text-plum mb-3">
-              {meal.name}
-            </h1>
-          </div>
-
-          {/* Desktop header */}
-          <div className="hidden md:block">
-            <div className="flex items-start justify-between gap-3">
-              <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
-              <div className="flex items-center gap-2 shrink-0 ml-4">
+              {!meal.isFromSoulmate && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -231,9 +187,7 @@ export default function MealDetailsPage() {
                       <Pencil className="size-5 mr-2" />
                       Edit
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setShowShareDialog(true)}
-                    >
+                    <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
                       <Share2 className="size-5 mr-2" />
                       Share
                     </DropdownMenuItem>
@@ -246,7 +200,68 @@ export default function MealDetailsPage() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/meals")}
+              >
+                <X className="size-5" />
+              </Button>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight line-clamp-3 text-plum mb-3">
+              {meal.name}
+            </h1>
+            {meal.isFromSoulmate && meal.soulmateOwnerName && (
+              <p className="flex items-center gap-1.5 text-xs text-plum/50 mb-3 -mt-1">
+                <Heart className="size-3 fill-current" />
+                From {meal.soulmateOwnerName}
+              </p>
+            )}
+          </div>
+
+          {/* Desktop header */}
+          <div className="hidden md:block">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-3xl font-bold text-plum">{meal.name}</h1>
+                {meal.isFromSoulmate && meal.soulmateOwnerName && (
+                  <p className="flex items-center gap-1.5 text-xs text-plum/50 mt-1">
+                    <Heart className="size-3 fill-current" />
+                    From {meal.soulmateOwnerName}
+                  </p>
+                )}
               </div>
+              {!meal.isFromSoulmate && (
+                <div className="flex items-center gap-2 shrink-0 ml-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="size-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => navigate(`/meals/${mealId}/edit`)}
+                      >
+                        <Pencil className="size-5 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+                        <Share2 className="size-5 mr-2" />
+                        Share
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="size-5 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -386,7 +401,7 @@ export default function MealDetailsPage() {
               {sideAttachments.length > 0 && (
                 <div>
                   <p className="text-xs uppercase tracking-wide text-mauve/60 font-medium mb-2">
-                    Side dishes
+                    Pairings
                   </p>
                   <div className="flex flex-col gap-2">
                     {sideAttachments.map((att) => (
@@ -467,12 +482,14 @@ export default function MealDetailsPage() {
         </div>
       </div>
 
-      <ShareMealDialog
-        mealId={mealId}
-        mealName={meal.name}
-        open={showShareDialog}
-        onOpenChange={setShowShareDialog}
-      />
+      {!meal.isFromSoulmate && (
+        <ShareMealDialog
+          mealId={mealId}
+          mealName={meal.name}
+          open={showShareDialog}
+          onOpenChange={setShowShareDialog}
+        />
+      )}
     </Tabs>
   );
 }

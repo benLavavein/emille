@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import type { Doc } from "convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
+import { Heart } from "lucide-react";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
 import {
   Tooltip,
@@ -16,13 +17,25 @@ import {
   queueListStateFromConvex,
 } from "~/components/ui/queue";
 
-type MealWithType = Doc<"meals"> & { type?: "meal" | "side" };
+type MealWithType = Doc<"meals"> & {
+  type?: "meal" | "side";
+  isFromSoulmate?: boolean;
+  soulmateOwnerName?: string | null;
+};
 
 function MealQueueItem({ meal }: { meal: MealWithType }) {
   const isSide = meal.type === "side";
   return (
     <>
-      <span className="min-w-0 flex-1 truncate">{meal.name}</span>
+      <div className="min-w-0 flex-1 flex flex-col">
+        <span className="truncate">{meal.name}</span>
+        {meal.isFromSoulmate && meal.soulmateOwnerName && (
+          <span className="flex items-center gap-1 text-[10px] text-plum/50 font-normal">
+            <Heart className="size-2.5 fill-current" />
+            {meal.soulmateOwnerName}
+          </span>
+        )}
+      </div>
       {!isSide && (
         <span className="flex shrink-0 items-end gap-0.5">
           {MEAL_TIMES.map((time, index) => {
@@ -52,6 +65,7 @@ function MealQueueItem({ meal }: { meal: MealWithType }) {
   );
 }
 
+
 export function MealsQueue() {
   const meals = useQuery(api.meals.list);
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,43 +93,44 @@ export function MealsQueue() {
 
   const listState = queueListStateFromConvex(meals, filteredMeals);
 
+  const tabSelector = (
+    <div className="flex rounded-lg overflow-hidden ring-1 ring-blush/40 bg-blush/10 text-sm mx-1">
+      <button
+        type="button"
+        onClick={() => setActiveTab("meal")}
+        className={`flex-1 px-3 py-1.5 font-medium transition-colors rounded-l-lg ${
+          activeTab === "meal"
+            ? "bg-white shadow-sm text-plum"
+            : "text-mauve/70 hover:text-plum"
+        }`}
+      >
+        Meals
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab("side")}
+        className={`flex-1 px-3 py-1.5 font-medium transition-colors rounded-r-lg ${
+          activeTab === "side"
+            ? "bg-white shadow-sm text-plum"
+            : "text-mauve/70 hover:text-plum"
+        }`}
+      >
+        Pairings
+      </button>
+    </div>
+  );
+
   return (
     <Queue>
       <QueueHeader
-        title="Meals"
+        title={tabSelector}
         addTo="/meals/add"
-        addLabel={activeTab === "side" ? "Add side dish" : "Add meal"}
+        addLabel={activeTab === "side" ? "Add pairing" : "Add meal"}
         search={{
           value: searchQuery,
           onChange: setSearchQuery,
         }}
       />
-
-      {/* Meals / Sides tab selector */}
-      <div className="flex gap-1 px-3 pb-2 shrink-0">
-        <button
-          type="button"
-          onClick={() => setActiveTab("meal")}
-          className={`flex-1 text-sm py-1.5 rounded-lg font-medium transition-colors ${
-            activeTab === "meal"
-              ? "bg-plum text-white"
-              : "text-mauve hover:text-plum hover:bg-blush/30"
-          }`}
-        >
-          Meals
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("side")}
-          className={`flex-1 text-sm py-1.5 rounded-lg font-medium transition-colors ${
-            activeTab === "side"
-              ? "bg-plum text-white"
-              : "text-mauve hover:text-plum hover:bg-blush/30"
-          }`}
-        >
-          Sides
-        </button>
-      </div>
 
       <QueueBody>
         <QueueItems
@@ -124,7 +139,7 @@ export function MealsQueue() {
           itemTo={(meal) => `/meals/${meal._id}`}
           renderItem={(meal) => <MealQueueItem meal={meal as MealWithType} />}
           emptyText={
-            activeTab === "side" ? "No side dishes yet." : "No meals yet."
+            activeTab === "side" ? "No pairings yet." : "No meals yet."
           }
         />
       </QueueBody>

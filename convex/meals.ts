@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser, getCurrentUser } from "./users";
+import { getMySoulmateRow } from "./soulmates";
 
 type Step = { text: string; timerSeconds?: number };
 
@@ -8,7 +9,7 @@ function normalizeSteps(steps: (string | Step)[]): Step[] {
   return steps.map((s) => (typeof s === "string" ? { text: s } : s));
 }
 
-// Get all meals for the current user with tag details
+// Get all meals for the current user with tag details (+ soulmate meals if sharing enabled)
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -34,9 +35,49 @@ export const list = query({
           type: meal.type ?? "meal",
           steps: normalizeSteps(meal.steps),
           tags: tags.filter(Boolean),
+          isFromSoulmate: false as boolean,
+          soulmateOwnerName: null as string | null,
         };
       })
     );
+
+    // Append soulmate's meals if sharing is enabled
+    const soulmateResult = await getMySoulmateRow(ctx, user._id);
+    if (soulmateResult && soulmateResult.row.sharing.meals) {
+      const partnerId =
+        soulmateResult.row.user1Id === user._id
+          ? soulmateResult.row.user2Id
+          : soulmateResult.row.user1Id;
+      const partner = await ctx.db.get(partnerId);
+      const partnerName = partner?.name ?? partner?.email ?? "Your soulmate";
+
+      const partnerMeals = await ctx.db
+        .query("meals")
+        .withIndex("by_user", (q) => q.eq("userId", partnerId))
+        .order("desc")
+        .collect();
+
+      const partnerMealsWithTags = await Promise.all(
+        partnerMeals.map(async (meal) => {
+          const tags = await Promise.all(
+            (meal.tagIds || []).map(async (tagId) => {
+              const tag = await ctx.db.get(tagId);
+              return tag ? { _id: tag._id, name: tag.name } : null;
+            })
+          );
+          return {
+            ...meal,
+            type: meal.type ?? "meal",
+            steps: normalizeSteps(meal.steps),
+            tags: tags.filter(Boolean),
+            isFromSoulmate: true as boolean,
+            soulmateOwnerName: partnerName as string | null,
+          };
+        })
+      );
+
+      return [...mealsWithTags, ...partnerMealsWithTags];
+    }
 
     return mealsWithTags;
   },
@@ -68,9 +109,23 @@ export const get = query({
     const user = await getCurrentUser(ctx);
     if (!user) return null;
     const meal = await ctx.db.get(args.id);
+    if (!meal) return null;
 
-    if (!meal || meal.userId !== user._id) {
-      return null;
+    let isFromSoulmate = false;
+    let soulmateOwnerName: string | null = null;
+
+    if (meal.userId !== user._id) {
+      // Check if this meal belongs to our soulmate and meals sharing is on
+      const soulmateResult = await getMySoulmateRow(ctx, user._id);
+      if (!soulmateResult || !soulmateResult.row.sharing.meals) return null;
+      const partnerId =
+        soulmateResult.row.user1Id === user._id
+          ? soulmateResult.row.user2Id
+          : soulmateResult.row.user1Id;
+      if (meal.userId !== partnerId) return null;
+      isFromSoulmate = true;
+      const partner = await ctx.db.get(partnerId);
+      soulmateOwnerName = partner?.name ?? partner?.email ?? "Your soulmate";
     }
 
     const tags = await Promise.all(
@@ -99,6 +154,8 @@ export const get = query({
       steps: normalizeSteps(meal.steps),
       tags: tags.filter(Boolean),
       sideAttachments: sideAttachments.filter(Boolean),
+      isFromSoulmate,
+      soulmateOwnerName,
     };
   },
 });
