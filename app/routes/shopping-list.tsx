@@ -29,9 +29,48 @@ function formatQuantity(amount?: number, unit?: string): string | null {
 
 export default function ShoppingListPage() {
   const shoppingList = useQuery(api.shoppingList.get);
-  const addItem = useMutation(api.shoppingList.addItem);
-  const toggleItem = useMutation(api.shoppingList.toggleItem);
-  const removeItem = useMutation(api.shoppingList.removeItem);
+  const addItem = useMutation(api.shoppingList.addItem).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.shoppingList.get, {});
+      if (current === undefined || !("_id" in current)) return;
+      const newItem = {
+        id: crypto.randomUUID(),
+        name: args.name,
+        amount: args.amount,
+        unit: args.unit,
+        checked: false,
+        order: current.items.length,
+      };
+      localStore.setQuery(api.shoppingList.get, {}, {
+        ...current,
+        items: [...current.items, newItem],
+      });
+    },
+  );
+  const toggleItem = useMutation(api.shoppingList.toggleItem).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.shoppingList.get, {});
+      if (current === undefined || !("_id" in current)) return;
+      localStore.setQuery(api.shoppingList.get, {}, {
+        ...current,
+        items: current.items.map((item) =>
+          item.id === args.itemId ? { ...item, checked: !item.checked } : item,
+        ),
+      });
+    },
+  );
+  const removeItem = useMutation(api.shoppingList.removeItem).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.shoppingList.get, {});
+      if (current === undefined || !("_id" in current)) return;
+      localStore.setQuery(api.shoppingList.get, {}, {
+        ...current,
+        items: current.items
+          .filter((item) => item.id !== args.itemId)
+          .map((item, i) => ({ ...item, order: i })),
+      });
+    },
+  );
   const reorderItems = useMutation(api.shoppingList.reorderItems);
   const clearChecked = useMutation(api.shoppingList.clearChecked);
   const clearAll = useMutation(api.shoppingList.clearAll);
@@ -47,18 +86,19 @@ export default function ShoppingListPage() {
     });
   }, [shoppingList?.items]);
 
-  const handleAddItem = async () => {
-    if (!newItemName.trim()) return;
-    await addItem({ name: newItemName.trim() });
+  const handleAddItem = () => {
+    const name = newItemName.trim();
+    if (!name) return;
     setNewItemName("");
+    addItem({ name });
   };
 
-  const handleToggle = async (itemId: string) => {
-    await toggleItem({ itemId });
+  const handleToggle = (itemId: string) => {
+    toggleItem({ itemId });
   };
 
-  const handleRemove = async (itemId: string) => {
-    await removeItem({ itemId });
+  const handleRemove = (itemId: string) => {
+    removeItem({ itemId });
   };
 
   const handleDragStart = (itemId: string) => {
