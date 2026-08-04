@@ -14,14 +14,32 @@ function createOrderResponseSchema(itemCount: number) {
   type: "object",
   additionalProperties: false,
   properties: {
-    sectionIndexes: {
+    sectionIds: {
       type: "array",
-      items: { type: "integer", minimum: 0 },
+      items: {
+        type: "string",
+        enum: [
+          "produce",
+          "bakery",
+          "pantry",
+          "international",
+          "deli-prepared",
+          "meat-seafood",
+          "dairy-eggs",
+          "water-soda",
+          "snacks",
+          "frozen",
+          "household",
+          "health-beauty",
+          "pharmacy",
+          "other",
+        ],
+      },
       minItems: itemCount,
       maxItems: itemCount,
     },
   },
-  required: ["sectionIndexes"],
+  required: ["sectionIds"],
   } as const;
 }
 
@@ -141,13 +159,13 @@ export const organize = action({
         {
           role: "system",
           content:
-            "Assign every shopping-list item to exactly one numbered store section. Return one sectionIndexes value for each supplied item, in the exact same order as the items array. Each value must be the index of the best matching section from the supplied sections array. Use the supplied Other section for an item whose location is unclear. Do not omit, duplicate, rename, or invent items. The server will enforce the final order from the section indexes.",
+            "Classify every shopping-list item into exactly one store section. Return one sectionIds value for each supplied item, in the exact same order as the items array. Each value must be the matching stable section ID from the supplied sections array, never its numeric position. Use pharmacy for medicines such as Tylenol and ibuprofen; use produce for fresh fruit such as limes, lemons, and bananas; use pantry for flour and shelf-stable staples; use bakery for bread. Use other only when the item is unclear or nonsensical. Do not omit, duplicate, rename, or invent items. The server will enforce the final order from the returned section IDs.",
         },
         {
           role: "user",
           content: JSON.stringify({
-            sections: list.storeLayout.map((section, index) => ({
-              index,
+            sections: list.storeLayout.map((section) => ({
+              id: section.id,
               name: section.name,
             })),
             items: uncachedItems.map(({ name }) => name),
@@ -157,16 +175,11 @@ export const organize = action({
     });
 
     const parsed = JSON.parse(outputText) as {
-      sectionIndexes: number[];
+      sectionIds: string[];
     };
     if (
-      parsed.sectionIndexes.length !== uncachedItems.length ||
-      parsed.sectionIndexes.some(
-        (sectionIndex) =>
-          !Number.isInteger(sectionIndex) ||
-          sectionIndex < 0 ||
-          sectionIndex >= list.storeLayout.length,
-      )
+      parsed.sectionIds.length !== uncachedItems.length ||
+      parsed.sectionIds.some((sectionId) => !sectionIndexById.has(sectionId))
     ) {
       throw new Error("The AI returned an incomplete shopping-list order. Please try again.");
     }
@@ -174,7 +187,7 @@ export const organize = action({
     for (const [index, item] of uncachedItems.entries()) {
       cachedSectionByName.set(
         item.normalizedName,
-        list.storeLayout[parsed.sectionIndexes[index]]?.id ?? "other",
+        parsed.sectionIds[index],
       );
     }
     await ctx.runMutation(internal.shoppingList.cacheCategories, {
