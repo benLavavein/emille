@@ -212,7 +212,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
               <UserSync />
               <BackButtonProvider>
                 <div className="flex h-screen min-h-0 flex-col overflow-hidden">
-                  <div className="shrink-0">
+                  <div className="h-15 shrink-0 md:hidden">
                     <AppHeader />
                   </div>
                   <div className="flex min-h-0 flex-1 flex-row overflow-hidden">

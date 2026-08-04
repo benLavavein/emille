@@ -55,7 +55,7 @@ function MobileHeader() {
   const effectiveBackUrl = backUrl ?? "/";
 
   return (
-    <header className="md:hidden bg-plum text-white px-4 h-15 flex items-center sticky top-0 z-40">
+    <header className="fixed inset-x-0 top-0 z-40 h-15 bg-plum px-4 text-white md:hidden flex items-center">
       <div className="w-10 flex items-center">
         {location.pathname !== "/" && (
           <Link
