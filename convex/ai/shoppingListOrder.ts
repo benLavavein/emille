@@ -10,37 +10,76 @@ function normalizeItemName(name: string) {
 }
 
 function createOrderResponseSchema(itemCount: number) {
+  const itemKeys = Array.from({ length: itemCount }, (_, index) => String(index));
   return {
   type: "object",
   additionalProperties: false,
   properties: {
-    sectionIds: {
-      type: "array",
-      items: {
-        type: "string",
-        enum: [
-          "produce",
-          "bakery",
-          "pantry",
-          "international",
-          "deli-prepared",
-          "meat-seafood",
-          "dairy-eggs",
-          "water-soda",
-          "snacks",
-          "frozen",
-          "household",
-          "health-beauty",
-          "pharmacy",
-          "other",
-        ],
-      },
-      minItems: itemCount,
-      maxItems: itemCount,
+    assignments: {
+      type: "object",
+      additionalProperties: false,
+      properties: Object.fromEntries(
+        itemKeys.map((itemKey) => [
+          itemKey,
+          {
+            type: "string",
+            enum: ["produce", "bakery", "pantry", "international", "deli-prepared", "meat-seafood", "dairy-eggs", "water-soda", "snacks", "frozen", "household", "health-beauty", "pharmacy", "other"],
+          },
+        ]),
+      ),
+      required: itemKeys,
     },
   },
-  required: ["sectionIds"],
+  required: ["assignments"],
   } as const;
+}
+
+type ClassificationItem = { name: string; normalizedName: string };
+
+async function classifyItems(
+  apiKey: string,
+  storeLayout: Array<{ id: string; name: string }>,
+  items: ClassificationItem[],
+) {
+  const outputText = await requestStructuredOutput(apiKey, {
+    model: AI_MODELS.shoppingListOrder,
+    max_output_tokens: 2000,
+    text: {
+      format: {
+        type: "json_schema",
+        name: "shopping_list_section_assignments",
+        strict: true,
+        schema: createOrderResponseSchema(items.length),
+      },
+    },
+    input: [
+      {
+        role: "system",
+        content:
+          "Classify every shopping-list item into exactly one store section. Return one assignment for every item key; each key must remain attached to its supplied item, never grouped or reordered. sectionId must be one of the supplied stable section IDs, never a numeric position. Use pharmacy for medicines such as Tylenol and ibuprofen; produce for fresh fruit and vegetables; pantry for flour, pasta, rice, and shelf-stable staples; dairy-eggs for milk and cheese; bakery for bread; meat-seafood for raw chicken and sausage. Use other only when the item is unclear or nonsensical.",
+      },
+      {
+        role: "user",
+        content: JSON.stringify({
+          sections: storeLayout,
+          items: Object.fromEntries(items.map((item, index) => [String(index), item.name])),
+        }),
+      },
+    ],
+  });
+  const parsed = JSON.parse(outputText) as { assignments: Record<string, string> };
+  if (
+    Object.keys(parsed.assignments).length !== items.length ||
+    items.some(
+      (_, index) => !storeLayout.some((section) => section.id === parsed.assignments[String(index)]),
+    )
+  ) {
+    throw new Error("The AI returned an incomplete shopping-list order. Please try again.");
+  }
+  return items.map((item, index) => ({
+    normalizedName: item.normalizedName,
+    sectionId: parsed.assignments[String(index)],
+  }));
 }
 
 async function requestStructuredOutput(apiKey: string, body: Record<string, unknown>) {
@@ -144,51 +183,9 @@ export const organize = action({
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("AI features are not configured yet.");
 
-    const outputText = await requestStructuredOutput(apiKey, {
-      model: AI_MODELS.shoppingListOrder,
-      max_output_tokens: 2000,
-      text: {
-        format: {
-          type: "json_schema",
-            name: "shopping_list_section_assignments",
-          strict: true,
-          schema: createOrderResponseSchema(uncachedItems.length),
-        },
-      },
-      input: [
-        {
-          role: "system",
-          content:
-            "Classify every shopping-list item into exactly one store section. Return one sectionIds value for each supplied item, in the exact same order as the items array. Each value must be the matching stable section ID from the supplied sections array, never its numeric position. Use pharmacy for medicines such as Tylenol and ibuprofen; use produce for fresh fruit such as limes, lemons, and bananas; use pantry for flour and shelf-stable staples; use bakery for bread. Use other only when the item is unclear or nonsensical. Do not omit, duplicate, rename, or invent items. The server will enforce the final order from the returned section IDs.",
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            sections: list.storeLayout.map((section) => ({
-              id: section.id,
-              name: section.name,
-            })),
-            items: uncachedItems.map(({ name }) => name),
-          }),
-        },
-      ],
-    });
-
-    const parsed = JSON.parse(outputText) as {
-      sectionIds: string[];
-    };
-    if (
-      parsed.sectionIds.length !== uncachedItems.length ||
-      parsed.sectionIds.some((sectionId) => !sectionIndexById.has(sectionId))
-    ) {
-      throw new Error("The AI returned an incomplete shopping-list order. Please try again.");
-    }
-
-    for (const [index, item] of uncachedItems.entries()) {
-      cachedSectionByName.set(
-        item.normalizedName,
-        parsed.sectionIds[index],
-      );
+    const classifications = await classifyItems(apiKey, list.storeLayout, uncachedItems);
+    for (const classification of classifications) {
+      cachedSectionByName.set(classification.normalizedName, classification.sectionId);
     }
     await ctx.runMutation(internal.shoppingList.cacheCategories, {
       entries: [...new Map(
