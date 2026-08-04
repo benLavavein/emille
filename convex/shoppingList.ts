@@ -65,12 +65,18 @@ export const addItem = mutation({
       amount: args.amount,
       unit: args.unit,
       checked: false,
-      order: shoppingList ? shoppingList.items.length : 0,
+      order: 0,
     };
 
     if (shoppingList) {
       await ctx.db.patch(shoppingList._id, {
-        items: [...shoppingList.items, newItem],
+        items: [
+          newItem,
+          ...shoppingList.items.map((item) => ({
+            ...item,
+            order: item.order + 1,
+          })),
+        ],
       });
       return shoppingList._id;
     } else {

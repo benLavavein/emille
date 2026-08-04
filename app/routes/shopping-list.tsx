@@ -149,11 +149,14 @@ export default function ShoppingListPage() {
         amount: args.amount,
         unit: args.unit,
         checked: false,
-        order: current.items.length,
+        order: 0,
       };
       localStore.setQuery(api.shoppingList.get, {}, {
         ...current,
-        items: [...current.items, newItem],
+        items: [
+          newItem,
+          ...current.items.map((item) => ({ ...item, order: item.order + 1 })),
+        ],
       });
     },
   );
