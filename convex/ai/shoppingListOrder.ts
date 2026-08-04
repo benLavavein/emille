@@ -13,20 +13,12 @@ const orderResponseSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    assignments: {
+    sectionIndexes: {
       type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          id: { type: "string" },
-          sectionIndex: { type: "integer", minimum: 0 },
-        },
-        required: ["id", "sectionIndex"],
-      },
+      items: { type: "integer", minimum: 0 },
     },
   },
-  required: ["assignments"],
+  required: ["sectionIndexes"],
 } as const;
 
 async function requestStructuredOutput(apiKey: string, body: Record<string, unknown>) {
@@ -145,7 +137,7 @@ export const organize = action({
         {
           role: "system",
           content:
-            "Assign every shopping-list item to exactly one numbered store section. sectionIndex must be the index of the best matching section from the supplied sections array. Use the supplied Other section for an item whose location is unclear. Do not use any other sectionIndex. Do not omit, duplicate, rename, or invent items. The server will enforce the final order from the section indexes.",
+            "Assign every shopping-list item to exactly one numbered store section. Return one sectionIndexes value for each supplied item, in the exact same order as the items array. Each value must be the index of the best matching section from the supplied sections array. Use the supplied Other section for an item whose location is unclear. Do not omit, duplicate, rename, or invent items. The server will enforce the final order from the section indexes.",
         },
         {
           role: "user",
@@ -154,39 +146,32 @@ export const organize = action({
               index,
               name: section.name,
             })),
-            items: uncachedItems.map(({ id, name }) => ({ id, name })),
+            items: uncachedItems.map(({ name }) => name),
           }),
         },
       ],
     });
 
     const parsed = JSON.parse(outputText) as {
-      assignments: Array<{ id: string; sectionIndex: number }>;
+      sectionIndexes: number[];
     };
-    const expectedIds = new Set(uncachedItems.map((item) => item.id));
-    const returnedIds = new Set(parsed.assignments.map((assignment) => assignment.id));
     if (
-      parsed.assignments.length !== uncachedItems.length ||
-      returnedIds.size !== expectedIds.size ||
-      [...expectedIds].some((id) => !returnedIds.has(id)) ||
-      parsed.assignments.some(
-        (assignment) =>
-          !Number.isInteger(assignment.sectionIndex) ||
-          assignment.sectionIndex < 0 ||
-          assignment.sectionIndex >= list.storeLayout.length,
+      parsed.sectionIndexes.length !== uncachedItems.length ||
+      parsed.sectionIndexes.some(
+        (sectionIndex) =>
+          !Number.isInteger(sectionIndex) ||
+          sectionIndex < 0 ||
+          sectionIndex >= list.storeLayout.length,
       )
     ) {
       throw new Error("The AI returned an incomplete shopping-list order. Please try again.");
     }
 
-    const sectionByItemId = new Map<string, string>(
-      parsed.assignments.map((assignment) => [
-        assignment.id,
-        list.storeLayout[assignment.sectionIndex]?.id ?? "other",
-      ]),
-    );
-    for (const item of uncachedItems) {
-      cachedSectionByName.set(item.normalizedName, sectionByItemId.get(item.id)!);
+    for (const [index, item] of uncachedItems.entries()) {
+      cachedSectionByName.set(
+        item.normalizedName,
+        list.storeLayout[parsed.sectionIndexes[index]]?.id ?? "other",
+      );
     }
     await ctx.runMutation(internal.shoppingList.cacheCategories, {
       entries: [...new Map(
