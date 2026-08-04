@@ -9,17 +9,21 @@ function normalizeItemName(name: string) {
   return name.replace(/[^a-z0-9]/gi, "").toLowerCase();
 }
 
-const orderResponseSchema = {
+function createOrderResponseSchema(itemCount: number) {
+  return {
   type: "object",
   additionalProperties: false,
   properties: {
     sectionIndexes: {
       type: "array",
       items: { type: "integer", minimum: 0 },
+      minItems: itemCount,
+      maxItems: itemCount,
     },
   },
   required: ["sectionIndexes"],
-} as const;
+  } as const;
+}
 
 async function requestStructuredOutput(apiKey: string, body: Record<string, unknown>) {
   const response = await fetch("https://api.openai.com/v1/responses", {
@@ -130,7 +134,7 @@ export const organize = action({
           type: "json_schema",
             name: "shopping_list_section_assignments",
           strict: true,
-          schema: orderResponseSchema,
+          schema: createOrderResponseSchema(uncachedItems.length),
         },
       },
       input: [
