@@ -1,5 +1,5 @@
-const CACHE_NAME = "emille-v1";
-const PRECACHE_URLS = ["/", "/manifest.json", "/otter.svg"];
+const CACHE_NAME = "emille-v2";
+const PRECACHE_URLS = ["/manifest.json", "/otter.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -23,6 +23,18 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  // Authentication is determined by the server-rendered document and Clerk's
+  // cookies. Never cache documents or API responses, otherwise an older
+  // signed-out response can be shown when the user returns to the app.
+  const cacheableDestinations = new Set([
+    "font",
+    "image",
+    "manifest",
+    "script",
+    "style",
+  ]);
+  if (!cacheableDestinations.has(event.request.destination)) return;
 
   event.respondWith(
     fetch(event.request)

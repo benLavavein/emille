@@ -262,9 +262,20 @@ export const importFromUrl = action({
   args: { url: v.string() },
   handler: async (ctx, args): Promise<string> => {
     const res = await fetch(args.url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; EmilleBot/1.0)" },
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
     });
-    if (!res.ok) throw new Error(`Failed to fetch URL: ${res.status}`);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "(unreadable)");
+      throw new Error(
+        `Failed to fetch URL: ${res.status}\nFinal URL: ${res.url}\nBody: ${body.slice(0, 1000)}`,
+      );
+    }
 
     const html = await res.text();
 

@@ -7,6 +7,19 @@ export default defineSchema({
     clerkId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
+    // Optional during the rollout so documents created before this field can
+    // be backfilled before the validator is made required.
+    pro: v.optional(v.boolean()),
+    // The order a Pro user walks through their store. Optional for the same
+    // rollout/backfill safety as the Pro entitlement.
+    storeLayout: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          name: v.string(),
+        })
+      )
+    ),
     friendCode: v.string(),
     lastLoginAt: v.optional(v.number()),
     activeMealPlanId: v.optional(v.id("mealPlans")),

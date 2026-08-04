@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as ai_models from "../ai/models.js";
+import type * as ai_recipeCleanup from "../ai/recipeCleanup.js";
+import type * as ai_shoppingListOrder from "../ai/shoppingListOrder.js";
 import type * as friends from "../friends.js";
 import type * as importRecipe from "../importRecipe.js";
 import type * as mealPlans from "../mealPlans.js";
@@ -25,6 +28,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ai/models": typeof ai_models;
+  "ai/recipeCleanup": typeof ai_recipeCleanup;
+  "ai/shoppingListOrder": typeof ai_shoppingListOrder;
   friends: typeof friends;
   importRecipe: typeof importRecipe;
   mealPlans: typeof mealPlans;

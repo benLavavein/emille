@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useSetBackUrl } from "~/lib/back-button";
-import { useQuery, useMutation } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -27,6 +27,8 @@ import {
   Users,
   Share2,
   Heart,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
@@ -86,9 +88,28 @@ export default function MealDetailsPage() {
   const cookingSessions = useQuery(api.meals.getCooking);
   const clearOneCooking = useMutation(api.users.clearOneCooking);
   const deleteMeal = useMutation(api.meals.remove);
+  const updateMeal = useMutation(api.meals.update);
+  const reviewRecipe = useAction(api.ai.recipeCleanup.review);
+  const cleanupRecipe = useAction(api.ai.recipeCleanup.preview);
+  const currentUser = useQuery(api.users.getMe);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [cleanedSteps, setCleanedSteps] = useState<
+    Array<{ text: string; timerSeconds?: number }> | null
+  >(null);
+  const [cleanupStatus, setCleanupStatus] = useState<"reviewing" | "cleaning" | null>(null);
+  const [cleanupError, setCleanupError] = useState<string | null>(null);
+  const [cleanupNotice, setCleanupNotice] = useState<string | null>(null);
+
+  // React Router reuses this route component when only the meal ID changes.
+  // A cleanup preview belongs to one meal only, so discard it on navigation.
+  useEffect(() => {
+    setCleanedSteps(null);
+    setCleanupError(null);
+    setCleanupNotice(null);
+    setCleanupStatus(null);
+  }, [mealId]);
 
   const cookingSession = (cookingSessions ?? []).filter(Boolean).find(
     (s) => s!.mealId === mealId,
@@ -102,6 +123,43 @@ export default function MealDetailsPage() {
     } catch (error) {
       console.error("Failed to delete meal:", error);
     }
+  };
+
+  const handleRecipeCleanup = async () => {
+    setCleanupStatus("reviewing");
+    setCleanupError(null);
+    setCleanupNotice(null);
+    try {
+      const review = await reviewRecipe({ mealId });
+      if (!review.isRecipeConsistent) {
+        setCleanupError(
+          `Can't clean up these instructions because they don't match the ingredient list. ${review.consistencyReason}`,
+        );
+        return;
+      }
+      if (!review.needsCleanup) {
+        setCleanupNotice(review.reason);
+        return;
+      }
+
+      setCleanupStatus("cleaning");
+      const result = await cleanupRecipe({ mealId });
+      setCleanedSteps(result.steps);
+    } catch (error) {
+      setCleanupError(
+        error instanceof Error
+          ? error.message
+          : "Could not clean up the recipe instructions.",
+      );
+    } finally {
+      setCleanupStatus(null);
+    }
+  };
+
+  const applyCleanedSteps = async () => {
+    if (!cleanedSteps) return;
+    await updateMeal({ id: mealId, steps: cleanedSteps });
+    setCleanedSteps(null);
   };
 
   if (meal === undefined) {
@@ -451,6 +509,63 @@ export default function MealDetailsPage() {
           </TabsContent>
 
           <TabsContent value="recipe">
+            {!meal.isFromSoulmate && currentUser?.pro === true && (
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-plum/20 bg-plum/5 p-3">
+                <p className="text-sm text-mauve">
+                  Turn long recipe instructions into clean cooking steps.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={cleanupStatus !== null || !meal.steps?.length}
+                  onClick={handleRecipeCleanup}
+                >
+                  {cleanupStatus ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 size-4" />
+                  )}
+                  {cleanupStatus === "reviewing"
+                    ? "Checking instructions..."
+                    : cleanupStatus === "cleaning"
+                      ? "Preparing preview..."
+                      : "Clean up instructions"}
+                </Button>
+              </div>
+            )}
+            {cleanupNotice && (
+              <p className="mb-4 rounded-xl border border-plum/20 bg-plum/5 p-3 text-sm text-mauve">
+                These instructions already look good. {cleanupNotice}
+              </p>
+            )}
+            {cleanupError && (
+              <p className="mb-4 text-sm text-destructive">{cleanupError}</p>
+            )}
+            {cleanedSteps && (
+              <div className="mb-4 rounded-xl border border-plum/30 bg-white/80 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold text-plum">Cleaned instructions</h2>
+                    <p className="text-sm text-mauve">Review before replacing your current steps.</p>
+                  </div>
+                  <Sparkles className="size-5 shrink-0 text-plum" />
+                </div>
+                <ol className="mb-4 space-y-2 text-sm text-plum">
+                  {cleanedSteps.map((step, index) => (
+                    <li key={index} className="flex gap-2">
+                      <span className="font-medium text-mauve">{index + 1}.</span>
+                      <span>{step.text}</span>
+                    </li>
+                  ))}
+                </ol>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={applyCleanedSteps}>Apply instructions</Button>
+                  <Button size="sm" variant="outline" onClick={() => setCleanedSteps(null)}>
+                    Keep current steps
+                  </Button>
+                </div>
+              </div>
+            )}
             {meal.steps && meal.steps.length > 0 ? (
               <div className="space-y-3">
                 {meal.steps.map((step: any, index: number) => (

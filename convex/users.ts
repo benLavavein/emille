@@ -75,6 +75,8 @@ export const upsertUser = mutation({
         email: identity.email || existingUser.email,
         name: identity.name || existingUser.name,
         lastLoginAt: Date.now(),
+        // Backfill accounts created before the pro entitlement was added.
+        pro: existingUser.pro ?? false,
       });
       return existingUser._id;
     }
@@ -84,6 +86,7 @@ export const upsertUser = mutation({
       clerkId: identity.subject,
       email: identity.email || "",
       name: identity.name,
+      pro: false,
       friendCode,
       lastLoginAt: Date.now(),
     });
@@ -97,6 +100,56 @@ export const getMe = query({
   args: {},
   handler: async (ctx) => {
     return await getCurrentUser(ctx);
+  },
+});
+
+export const getStoreLayout = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    if (user.pro !== true) {
+      throw new Error("Store layout is available with Emille Pro");
+    }
+    return user.storeLayout ?? [];
+  },
+});
+
+export const updateStoreLayout = mutation({
+  args: {
+    sections: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    if (user.pro !== true) {
+      throw new Error("Store layout is available with Emille Pro");
+    }
+
+    if (args.sections.length > 30) {
+      throw new Error("Store layouts can contain up to 30 sections");
+    }
+
+    const ids = new Set<string>();
+    const names = new Set<string>();
+    const sections = args.sections.map((section) => {
+      const id = section.id.trim();
+      const name = section.name.trim();
+      if (!id || !name || name.length > 60) {
+        throw new Error("Each store section needs a name of up to 60 characters");
+      }
+      if (ids.has(id) || names.has(name.toLocaleLowerCase())) {
+        throw new Error("Store sections must have unique names");
+      }
+      ids.add(id);
+      names.add(name.toLocaleLowerCase());
+      return { id, name };
+    });
+
+    await ctx.db.patch(user._id, { storeLayout: sections });
   },
 });
 
@@ -241,4 +294,3 @@ export const clearTimer = mutation({
     await ctx.db.patch(user._id, { currentlyCooking: updated });
   },
 });
-

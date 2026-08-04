@@ -1,9 +1,25 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router";
-import { useQuery, useMutation } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { DragEndEvent, DragStartEvent, Modifier } from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { api } from "../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
-import { GripVertical, Plus, Check, X, Trash2 } from "lucide-react";
+import { GripVertical, Plus, Check, X, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { Input } from "~/components/ui/input";
 
 export function meta() {
@@ -25,6 +41,100 @@ function formatQuantity(amount?: number, unit?: string): string | null {
   }
   if (unit) parts.push(unit);
   return parts.join(" ");
+}
+
+type ShoppingItem = {
+  id: string;
+  name: string;
+  amount?: number;
+  unit?: string;
+  checked: boolean;
+  order: number;
+  mealName?: string;
+};
+
+const restrictToVerticalAxis: Modifier = ({ transform }) => ({
+  ...transform,
+  x: 0,
+});
+
+function SortableShoppingItem({
+  item,
+  onToggle,
+  onRemove,
+  isSorting,
+}: {
+  item: ShoppingItem;
+  onToggle: (itemId: string) => void;
+  onRemove: (itemId: string) => void;
+  isSorting: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+  const qty = formatQuantity(item.amount, item.unit);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: isSorting && transform
+          ? CSS.Transform.toString({ ...transform, x: 0 })
+          : undefined,
+        transition: isSorting ? transition : undefined,
+      }}
+      className={`relative flex items-center gap-3 py-4 pr-4 pl-16 bg-white/60 backdrop-blur-sm rounded-xl border transition-[opacity,box-shadow,border-color] ${
+        item.checked ? "border-blush/30 opacity-60" : "border-blush/50"
+      } ${isDragging ? "opacity-30 shadow-lg" : ""}`}
+    >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        aria-label={`Drag ${item.name} to reorder`}
+        className="touch-none absolute inset-y-0 left-0 flex w-12 items-center justify-center rounded-l-xl border-r border-blush/30 text-mauve/50 cursor-grab active:cursor-grabbing hover:bg-plum/5"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="w-5 h-5" />
+      </button>
+
+      <button
+        onClick={() => onToggle(item.id)}
+        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+          item.checked
+            ? "bg-plum border-plum text-white"
+            : "border-blush/50 bg-white/60 hover:border-plum/50"
+        }`}
+      >
+        {item.checked && <Check className="w-4 h-4" />}
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2">
+          <span className={`font-medium ${item.checked ? "text-mauve line-through" : "text-plum"}`}>
+            {item.name}
+          </span>
+          {qty && <span className="text-sm text-mauve/70">{qty}</span>}
+        </div>
+        {item.mealName && <span className="text-xs text-mauve/60">{item.mealName}</span>}
+      </div>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onRemove(item.id)}
+        className="h-8 w-8 text-mauve/50 hover:text-destructive"
+      >
+        <X className="w-4 h-4" />
+      </Button>
+    </div>
+  );
 }
 
 export default function ShoppingListPage() {
@@ -71,12 +181,39 @@ export default function ShoppingListPage() {
       });
     },
   );
-  const reorderItems = useMutation(api.shoppingList.reorderItems);
+  const reorderItems = useMutation(api.shoppingList.reorderItems).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.shoppingList.get, {});
+      if (current === undefined || !("_id" in current)) return;
+
+      const itemById = new Map(current.items.map((item) => [item.id, item]));
+      const reorderedItems = args.itemIds
+        .map((id, order) => {
+          const item = itemById.get(id);
+          return item && { ...item, order };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== undefined);
+
+      localStore.setQuery(api.shoppingList.get, {}, {
+        ...current,
+        items: reorderedItems,
+      });
+    },
+  );
   const clearChecked = useMutation(api.shoppingList.clearChecked);
   const clearAll = useMutation(api.shoppingList.clearAll);
+  const organizeWithAi = useAction(api.ai.shoppingListOrder.organize);
+  const currentUser = useQuery(api.users.getMe);
 
   const [newItemName, setNewItemName] = useState("");
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [isOrganizing, setIsOrganizing] = useState(false);
+  const [organizationError, setOrganizationError] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
 
   const items = useMemo(() => {
     if (!shoppingList?.items) return [];
@@ -101,29 +238,46 @@ export default function ShoppingListPage() {
     removeItem({ itemId });
   };
 
-  const handleDragStart = (itemId: string) => {
-    setDraggedItemId(itemId);
+  const handleOrganize = async () => {
+    setIsOrganizing(true);
+    setOrganizationError(null);
+    try {
+      const { itemIds } = await organizeWithAi({});
+      const checkedIds = (shoppingList?.items ?? [])
+        .filter((item) => item.checked)
+        .sort((a, b) => a.order - b.order)
+        .map((item) => item.id);
+      await reorderItems({ itemIds: [...itemIds, ...checkedIds] });
+    } catch (caught) {
+      setOrganizationError(
+        caught instanceof Error ? caught.message : "Could not organize your shopping list.",
+      );
+    } finally {
+      setIsOrganizing(false);
+    }
   };
 
-  const handleDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!draggedItemId || draggedItemId === targetId) return;
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveItemId(String(active.id));
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setActiveItemId(null);
+    if (!over || active.id === over.id) return;
 
     const currentItems = shoppingList?.items || [];
-    const draggedIndex = currentItems.findIndex((i) => i.id === draggedItemId);
-    const targetIndex = currentItems.findIndex((i) => i.id === targetId);
+    const draggedIndex = currentItems.findIndex((i) => i.id === active.id);
+    const targetIndex = currentItems.findIndex((i) => i.id === over.id);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
-    const newOrder = [...currentItems];
-    const [draggedItem] = newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, draggedItem);
+    const draggedItem = currentItems[draggedIndex];
+    const targetItem = currentItems[targetIndex];
 
-    reorderItems({ itemIds: newOrder.map((i) => i.id) });
-  };
+    // Checked items always render as a separate section at the bottom.
+    if (draggedItem.checked !== targetItem.checked) return;
 
-  const handleDragEnd = () => {
-    setDraggedItemId(null);
+    reorderItems({ itemIds: arrayMove(currentItems, draggedIndex, targetIndex).map((i) => i.id) });
   };
 
   const checkedCount = items.filter((i) => i.checked).length;
@@ -162,6 +316,18 @@ export default function ShoppingListPage() {
       {items.length > 0 && (
         <div className="flex items-center justify-between mb-4 text-sm text-mauve">
           <div className="flex items-center gap-1">
+            {currentUser?.pro === true && uncheckedCount > 1 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOrganize}
+                disabled={isOrganizing}
+                className="gap-1.5"
+              >
+                {isOrganizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                {isOrganizing ? "Organizing…" : "Organize list"}
+              </Button>
+            )}
             {checkedCount > 0 && (
               <Button
                 variant="ghost"
@@ -184,6 +350,10 @@ export default function ShoppingListPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {organizationError && (
+        <p className="mb-4 text-sm text-destructive">{organizationError}</p>
       )}
 
       {/* Shopping List */}
@@ -212,69 +382,39 @@ export default function ShoppingListPage() {
           </h2>
         </div>
       ) : (
-        <div className="space-y-2">
-          {items.map((item) => {
-            const qty = formatQuantity(item.amount, item.unit);
-            return (
-              <div
-                key={item.id}
-                draggable
-                onDragStart={() => handleDragStart(item.id)}
-                onDragOver={(e) => handleDragOver(e, item.id)}
-                onDragEnd={handleDragEnd}
-                className={`flex items-center gap-3 p-4 bg-white/60 backdrop-blur-sm rounded-xl border transition-all ${
-                  item.checked
-                    ? "border-blush/30 opacity-60"
-                    : "border-blush/50"
-                } ${
-                  draggedItemId === item.id ? "opacity-50 shadow-lg" : ""
-                } cursor-grab active:cursor-grabbing`}
-              >
-                <GripVertical className="w-5 h-5 text-mauve/50 shrink-0" />
-
-                <button
-                  onClick={() => handleToggle(item.id)}
-                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    item.checked
-                      ? "bg-plum border-plum text-white"
-                      : "border-blush/50 bg-white/60 hover:border-plum/50"
-                  }`}
-                >
-                  {item.checked && <Check className="w-4 h-4" />}
-                </button>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span
-                      className={`font-medium ${
-                        item.checked ? "text-mauve line-through" : "text-plum"
-                      }`}
-                    >
-                      {item.name}
-                    </span>
-                    {qty && (
-                      <span className="text-sm text-mauve/70">{qty}</span>
-                    )}
-                  </div>
-                  {item.mealName && (
-                    <span className="text-xs text-mauve/60">
-                      {item.mealName}
-                    </span>
-                  )}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis]}
+          onDragStart={handleDragStart}
+          onDragCancel={() => setActiveItemId(null)}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {items.map((item) => (
+                <SortableShoppingItem
+                  key={item.id}
+                  item={item}
+                  onToggle={handleToggle}
+                  onRemove={handleRemove}
+                  isSorting={activeItemId !== null}
+                />
+              ))}
+            </div>
+          </SortableContext>
+          <DragOverlay dropAnimation={null} modifiers={[restrictToVerticalAxis]}>
+            {activeItemId && (() => {
+              const item = items.find((candidate) => candidate.id === activeItemId);
+              return item ? (
+                <div className="flex items-center gap-3 p-4 bg-white rounded-xl border border-plum/40 shadow-xl">
+                  <GripVertical className="w-5 h-5 text-mauve/50 shrink-0" />
+                  <span className="font-medium text-plum">{item.name}</span>
                 </div>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemove(item.id)}
-                  className="h-8 w-8 text-mauve/50 hover:text-destructive"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            );
-          })}
-        </div>
+              ) : null;
+            })()}
+          </DragOverlay>
+        </DndContext>
       )}
     </div>
   );

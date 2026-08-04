@@ -13,4 +13,5 @@ export default [
   route("meal-plan", "routes/meal-plan.tsx"),
   route("shopping-list", "routes/shopping-list.tsx"),
   route("friends", "routes/friends.tsx"),
+  route("settings", "routes/settings.tsx"),
 ] satisfies RouteConfig;

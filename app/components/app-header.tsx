@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronLeft,
   Users,
+  Settings,
 } from "lucide-react";
 import { OtterIcon } from "~/components/icons/otter";
 import { useBackButton } from "~/lib/back-button";
@@ -30,6 +31,7 @@ export const navLinks = [
   { href: "/meal-plan", label: "Meal plan", icon: Calendar },
   { href: "/shopping-list", label: "Shopping List", icon: ShoppingCart },
   { href: "/friends", label: "Friends", icon: Users },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 function NotiBadge({ count }: { count: number }) {
