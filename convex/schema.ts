@@ -182,4 +182,10 @@ export default defineSchema({
       })
     ),
   }).index("by_user", ["userId"]),
+
+  // Shared exact-match cache for AI shopping-list classifications.
+  itemSectionCache: defineTable({
+    normalizedName: v.string(),
+    sectionId: v.string(),
+  }).index("by_normalized_name", ["normalizedName"]),
 });

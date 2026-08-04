@@ -6,6 +6,10 @@ import {
   type QueryCtx,
   type MutationCtx,
 } from "./_generated/server";
+import {
+  CONFIGURABLE_STORE_SECTIONS,
+  normalizeStoreLayout,
+} from "../shared/storeSections";
 
 const FRIEND_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const generateCode = customAlphabet(FRIEND_CODE_ALPHABET, 8);
@@ -110,7 +114,7 @@ export const getStoreLayout = query({
     if (user.pro !== true) {
       throw new Error("Store layout is available with Emille Pro");
     }
-    return user.storeLayout ?? [];
+    return normalizeStoreLayout(user.storeLayout).filter((section) => section.id !== "other");
   },
 });
 
@@ -129,25 +133,18 @@ export const updateStoreLayout = mutation({
       throw new Error("Store layout is available with Emille Pro");
     }
 
-    if (args.sections.length > 30) {
-      throw new Error("Store layouts can contain up to 30 sections");
+    const ids = args.sections.map((section) => section.id);
+    if (
+      ids.length !== CONFIGURABLE_STORE_SECTIONS.length ||
+      new Set(ids).size !== CONFIGURABLE_STORE_SECTIONS.length ||
+      CONFIGURABLE_STORE_SECTIONS.some((section) => !ids.includes(section.id))
+    ) {
+      throw new Error("Store layouts must contain every available store section exactly once");
     }
 
-    const ids = new Set<string>();
-    const names = new Set<string>();
-    const sections = args.sections.map((section) => {
-      const id = section.id.trim();
-      const name = section.name.trim();
-      if (!id || !name || name.length > 60) {
-        throw new Error("Each store section needs a name of up to 60 characters");
-      }
-      if (ids.has(id) || names.has(name.toLocaleLowerCase())) {
-        throw new Error("Store sections must have unique names");
-      }
-      ids.add(id);
-      names.add(name.toLocaleLowerCase());
-      return { id, name };
-    });
+    const sections = ids.map(
+      (id) => CONFIGURABLE_STORE_SECTIONS.find((section) => section.id === id)!,
+    );
 
     await ctx.db.patch(user._id, { storeLayout: sections });
   },

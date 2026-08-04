@@ -1,32 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import {
-  ArrowDown,
-  ArrowUp,
-  MapPinned,
-  Plus,
-  Settings,
-  Trash2,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, MapPinned, Settings } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-
-const STARTER_SECTIONS = [
-  "Produce",
-  "Bakery",
-  "Grains & pantry",
-  "Meat & seafood",
-  "Dairy & eggs",
-  "Frozen",
-  "Household",
-];
 
 type StoreSection = { id: string; name: string };
-
-function createSection(name: string): StoreSection {
-  return { id: crypto.randomUUID(), name };
-}
 
 export function meta() {
   return [
@@ -39,7 +17,6 @@ function StoreLayoutSettings() {
   const savedSections = useQuery(api.users.getStoreLayout);
   const updateStoreLayout = useMutation(api.users.updateStoreLayout);
   const [draftSections, setDraftSections] = useState<StoreSection[] | null>(null);
-  const [newSection, setNewSection] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,13 +28,6 @@ function StoreLayoutSettings() {
   const updateSections = (next: StoreSection[]) => {
     setDraftSections(next);
     setError(null);
-  };
-
-  const addSection = () => {
-    const name = newSection.trim();
-    if (!name) return;
-    updateSections([...sections, createSection(name)]);
-    setNewSection("");
   };
 
   const moveSection = (index: number, direction: -1 | 1) => {
@@ -101,26 +71,13 @@ function StoreLayoutSettings() {
           <div>
             <h3 className="font-semibold text-plum">Store layout</h3>
             <p className="text-sm text-mauve mt-1 leading-6">
-              Put sections in the order you walk through your store. We’ll use
-              this sequence when organizing your shopping list.
+              Put the available sections in the order you walk through your store.
+              We’ll use this sequence when organizing your shopping list.
             </p>
           </div>
         </div>
 
-        {sections.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-blush/70 px-4 py-5 text-center">
-            <p className="text-sm text-mauve mb-3">No store sections yet.</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => updateSections(STARTER_SECTIONS.map(createSection))}
-            >
-              Use starter sections
-            </Button>
-          </div>
-        ) : (
-          <ol className="space-y-2">
+        <ol className="space-y-2">
             {sections.map((section, index) => (
               <li
                 key={section.id}
@@ -129,20 +86,7 @@ function StoreLayoutSettings() {
                 <span className="w-6 text-center text-xs font-semibold text-mauve/60">
                   {index + 1}
                 </span>
-                <Input
-                  value={section.name}
-                  onChange={(event) =>
-                    updateSections(
-                      sections.map((current) =>
-                        current.id === section.id
-                          ? { ...current, name: event.target.value }
-                          : current,
-                      ),
-                    )
-                  }
-                  aria-label={`Store section ${index + 1}`}
-                  className="border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
-                />
+                <span className="flex-1 px-1 text-sm text-plum">{section.name}</span>
                 <div className="flex shrink-0">
                   <Button
                     type="button"
@@ -166,35 +110,10 @@ function StoreLayoutSettings() {
                   >
                     <ArrowDown className="size-4" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 text-mauve hover:text-destructive"
-                    onClick={() => updateSections(sections.filter((current) => current.id !== section.id))}
-                    aria-label={`Remove ${section.name}`}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
                 </div>
               </li>
             ))}
           </ol>
-        )}
-
-        <div className="flex gap-2 mt-4">
-          <Input
-            value={newSection}
-            onChange={(event) => setNewSection(event.target.value)}
-            onKeyDown={(event) => event.key === "Enter" && addSection()}
-            placeholder="Add a section"
-            maxLength={60}
-          />
-          <Button type="button" variant="outline" onClick={addSection} disabled={!newSection.trim()}>
-            <Plus className="size-4 mr-1" />
-            Add
-          </Button>
-        </div>
 
         {error && <p className="text-sm text-destructive mt-3">{error}</p>}
 

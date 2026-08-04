@@ -336,7 +336,9 @@ export const getCooking = query({
       })
     );
 
-    return results.filter(Boolean);
+    return results.filter(
+      (session): session is NonNullable<typeof session> => session !== null,
+    );
   },
 });
 

@@ -1,8 +1,9 @@
 import { v } from "convex/values";
-import { mutation, query, type QueryCtx, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { requireUser, getCurrentUser } from "./users";
 import { getMySoulmateRow } from "./soulmates";
 import type { Id } from "./_generated/dataModel";
+import { isStoreSectionId } from "../shared/storeSections";
 
 /** Returns the userId whose shoppingLists document should be used.
  *  If shopping list sharing is active, that's always user1Id (the soulmate sender). */
@@ -20,6 +21,23 @@ async function resolveListOwner(
 function normalizeForSort(name: string): string {
   return name.trim().toLowerCase().replace(/e?s$/, "");
 }
+
+/** Saves newly classified terms. The normalized-name index is the cache's fast exact lookup. */
+export const cacheCategories = internalMutation({
+  args: {
+    entries: v.array(v.object({ normalizedName: v.string(), sectionId: v.string() })),
+  },
+  handler: async (ctx, args) => {
+    for (const entry of args.entries) {
+      if (!isStoreSectionId(entry.sectionId)) continue;
+      const existing = await ctx.db
+        .query("itemSectionCache")
+        .withIndex("by_normalized_name", (q) => q.eq("normalizedName", entry.normalizedName))
+        .unique();
+      if (!existing) await ctx.db.insert("itemSectionCache", entry);
+    }
+  },
+});
 
 export const get = query({
   args: {},
