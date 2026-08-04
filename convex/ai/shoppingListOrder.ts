@@ -132,7 +132,7 @@ export const organize = action({
 
     const outputText = await requestStructuredOutput(apiKey, {
       model: AI_MODELS.shoppingListOrder,
-      max_output_tokens: 500,
+      max_output_tokens: 2000,
       text: {
         format: {
           type: "json_schema",
