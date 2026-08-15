@@ -232,6 +232,68 @@ export const clearAll = mutation({
   },
 });
 
+export const addFromMeal = mutation({
+  args: {
+    mealId: v.id("meals"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const meal = await ctx.db.get(args.mealId);
+
+    if (!meal) {
+      throw new Error("Meal not found");
+    }
+
+    if (meal.userId !== user._id) {
+      const soulmateResult = await getMySoulmateRow(ctx, user._id);
+      const partnerId = soulmateResult
+        ? soulmateResult.row.user1Id === user._id
+          ? soulmateResult.row.user2Id
+          : soulmateResult.row.user1Id
+        : null;
+
+      if (
+        !soulmateResult?.row.sharing.meals ||
+        meal.userId !== partnerId
+      ) {
+        throw new Error("Meal not found");
+      }
+    }
+
+    const listOwner = await resolveListOwner(ctx, user._id);
+    const shoppingList = await ctx.db
+      .query("shoppingLists")
+      .withIndex("by_user", (q) => q.eq("userId", listOwner))
+      .first();
+    const existingItems = shoppingList?.items ?? [];
+    const startOrder = existingItems.length;
+    const newItems = meal.ingredients.map((ingredient, index) => ({
+      id: crypto.randomUUID(),
+      name: ingredient.name,
+      amount: ingredient.amount,
+      unit: ingredient.unit,
+      notes: ingredient.notes,
+      mealName: meal.name,
+      checked: false,
+      order: startOrder + index,
+    }));
+    const items = [...existingItems, ...newItems];
+
+    const shoppingListId = shoppingList
+      ? shoppingList._id
+      : await ctx.db.insert("shoppingLists", {
+          userId: listOwner,
+          items,
+        });
+
+    if (shoppingList) {
+      await ctx.db.patch(shoppingList._id, { items });
+    }
+
+    return { shoppingListId, addedCount: newItems.length };
+  },
+});
+
 export const addFromMealPlan = mutation({
   args: {
     mealPlanId: v.id("mealPlans"),

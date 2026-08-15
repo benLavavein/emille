@@ -29,6 +29,7 @@ import {
   Heart,
   Sparkles,
   Loader2,
+  ShoppingCart,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
@@ -89,6 +90,7 @@ export default function MealDetailsPage() {
   const clearOneCooking = useMutation(api.users.clearOneCooking);
   const deleteMeal = useMutation(api.meals.remove);
   const updateMeal = useMutation(api.meals.update);
+  const addToShoppingList = useMutation(api.shoppingList.addFromMeal);
   const reviewRecipe = useAction(api.ai.recipeCleanup.review);
   const cleanupRecipe = useAction(api.ai.recipeCleanup.preview);
   const currentUser = useQuery(api.users.getMe);
@@ -101,6 +103,7 @@ export default function MealDetailsPage() {
   const [cleanupStatus, setCleanupStatus] = useState<"reviewing" | "cleaning" | null>(null);
   const [cleanupError, setCleanupError] = useState<string | null>(null);
   const [cleanupNotice, setCleanupNotice] = useState<string | null>(null);
+  const [isAddingToShoppingList, setIsAddingToShoppingList] = useState(false);
 
   // React Router reuses this route component when only the meal ID changes.
   // A cleanup preview belongs to one meal only, so discard it on navigation.
@@ -160,6 +163,17 @@ export default function MealDetailsPage() {
     if (!cleanedSteps) return;
     await updateMeal({ id: mealId, steps: cleanedSteps });
     setCleanedSteps(null);
+  };
+
+  const handleAddToShoppingList = async () => {
+    setIsAddingToShoppingList(true);
+    try {
+      await addToShoppingList({ mealId });
+      navigate("/shopping-list");
+    } catch (error) {
+      console.error("Failed to add meal to shopping list:", error);
+      setIsAddingToShoppingList(false);
+    }
   };
 
   if (meal === undefined) {
@@ -487,6 +501,20 @@ export default function MealDetailsPage() {
           </TabsContent>
 
           <TabsContent value="ingredients">
+            <Button
+              className="mb-4 w-full"
+              onClick={handleAddToShoppingList}
+              disabled={isAddingToShoppingList || meal.ingredients.length === 0}
+            >
+              {isAddingToShoppingList ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <ShoppingCart className="size-4" />
+              )}
+              {isAddingToShoppingList
+                ? "Adding ingredients…"
+                : "Add all to shopping list"}
+            </Button>
             <div className="bg-white/60 backdrop-blur-sm rounded-md border border-blush/50 divide-y divide-blush/30">
               {meal.ingredients.map((ing, index: number) => (
                 <div key={index} className="flex gap-3 px-4 py-2 items-center">
