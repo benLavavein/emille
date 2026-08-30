@@ -11,16 +11,7 @@ import { Analytics } from "@vercel/analytics/react";
 
 import type { Route } from "./+types/root";
 import "./app.css";
-import { clerkMiddleware, rootAuthLoader } from "@clerk/react-router/server";
-import {
-  ClerkLoaded,
-  ClerkLoading,
-  ClerkProvider,
-  SignIn,
-  SignUp,
-  useAuth,
-} from "@clerk/react-router";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import {
   Authenticated,
   AuthLoading,
@@ -34,9 +25,12 @@ import { ConvexQueryClient } from "@convex-dev/react-query";
 import { api } from "../convex/_generated/api";
 import { AppHeader, DesktopSidebar } from "./components/app-header";
 import { BackButtonProvider } from "./lib/back-button";
+import { authClient } from "./lib/auth-client";
 import { OtterIcon } from "./components/icons/otter";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string, {
+  expectAuth: true,
+});
 const convexQueryClient = new ConvexQueryClient(convex);
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,7 +42,6 @@ const queryClient = new QueryClient({
 });
 convexQueryClient.connect(queryClient);
 
-// Component that syncs the Clerk user to Convex
 function UserSync() {
   const { isAuthenticated } = useConvexAuth();
   const upsertUser = useMutation(api.users.upsertUser);
@@ -61,10 +54,6 @@ function UserSync() {
 
   return null;
 }
-
-export const middleware = [clerkMiddleware()];
-
-export const loader = (args: Route.LoaderArgs) => rootAuthLoader(args);
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -115,56 +104,151 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-const clerkAppearance = {
-  variables: { colorPrimary: "#574964" },
-  elements: {
-    header: { display: "none" } as React.CSSProperties,
-    card: {
-      boxShadow: "none",
-      border: "none",
-      backgroundColor: "transparent",
-    } as React.CSSProperties,
-    cardBox: {
-      boxShadow: "none",
-      border: "none",
-      backgroundColor: "transparent",
-    } as React.CSSProperties,
-    footer: { display: "none" } as React.CSSProperties,
-    socialButtonsBlockButton: {
-      backgroundColor: "white",
-      border: "1px solid #e5e5e5",
-    } as React.CSSProperties,
-  },
-};
-
 function AuthScreen() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<
+    "signin" | "signup" | "forgot" | "reset"
+  >("signin");
+  const [resetToken, setResetToken] = useState<string>();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string>();
+  const [message, setMessage] = useState<string>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("token");
+    if (token) {
+      setResetToken(token);
+      setMode("reset");
+    }
+  }, []);
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(undefined);
+    setMessage(undefined);
+    setIsSubmitting(true);
+
+    if (mode === "forgot") {
+      const result = await authClient.requestPasswordReset({
+        email,
+        redirectTo: `${window.location.origin}/?resetPassword=1`,
+      });
+      if (result.error) {
+        setError(result.error.message || "Could not request a reset link");
+      } else {
+        setMessage("If that email exists, a reset link is on its way.");
+      }
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (mode === "reset") {
+      const result = await authClient.resetPassword({
+        newPassword: password,
+        token: resetToken || "",
+      });
+      if (result.error) {
+        setError(result.error.message || "Could not reset your password");
+      } else {
+        window.history.replaceState({}, "", "/");
+        setMode("signin");
+        setPassword("");
+        setMessage("Password updated. You can sign in now.");
+      }
+      setIsSubmitting(false);
+      return;
+    }
+
+    const result =
+      mode === "signin"
+        ? await authClient.signIn.email({ email, password })
+        : await authClient.signUp.email({ name, email, password });
+
+    if (result.error) {
+      setError(result.error.message || "Authentication failed");
+    }
+    setIsSubmitting(false);
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <OtterIcon className="w-40 h-40 mx-auto mb-4 text-plum" />
       <h1 className="text-4xl font-bold text-plum mb-4">Emille</h1>
       <p className="text-mauve mb-6">
-        {mode === "signin"
-          ? "Sign in to manage your meals"
-          : "Create your account"}
+        {mode === "signin" && "Sign in to manage your meals"}
+        {mode === "signup" && "Create your account"}
+        {mode === "forgot" && "Request a password reset link"}
+        {mode === "reset" && "Choose a new password"}
       </p>
-      <ClerkLoading>
-        <div className="animate-pulse space-y-8 px-6 py-15 h-50 max-w-[370px] w-full">
-          <div className="h-7 rounded-md bg-plum/8" />
-          <div className="h-7 rounded-md bg-plum/8" />
-        </div>
-      </ClerkLoading>
-      <ClerkLoaded>
-        <div className="h-50">
-          {mode === "signin" ? (
-            <SignIn routing="hash" appearance={clerkAppearance} />
-          ) : (
-            <SignUp routing="hash" appearance={clerkAppearance} />
-          )}
-        </div>
-      </ClerkLoaded>
-      <p className="text-sm text-mauve mt-2">
+      <form onSubmit={submit} className="w-full max-w-sm space-y-4 px-6">
+        {mode === "signup" && (
+          <label className="block space-y-1.5 text-sm font-medium text-plum">
+            Name
+            <input
+              required
+              autoComplete="name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className="w-full rounded-lg border border-plum/20 bg-white px-3 py-2.5 outline-none focus:border-plum"
+            />
+          </label>
+        )}
+        {mode !== "reset" && (
+          <label className="block space-y-1.5 text-sm font-medium text-plum">
+            Email
+            <input
+              required
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="w-full rounded-lg border border-plum/20 bg-white px-3 py-2.5 outline-none focus:border-plum"
+            />
+          </label>
+        )}
+        {mode !== "forgot" && (
+          <label className="block space-y-1.5 text-sm font-medium text-plum">
+            {mode === "reset" ? "New password" : "Password"}
+            <input
+              required
+              type="password"
+              minLength={8}
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="w-full rounded-lg border border-plum/20 bg-white px-3 py-2.5 outline-none focus:border-plum"
+            />
+          </label>
+        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        {message && <p className="text-sm text-plum">{message}</p>}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full rounded-lg bg-plum px-4 py-2.5 font-medium text-white transition-opacity disabled:opacity-60"
+        >
+          {isSubmitting
+            ? "Please wait…"
+            : mode === "signin"
+              ? "Sign in"
+              : mode === "signup"
+                ? "Create account"
+                : mode === "forgot"
+                  ? "Send reset link"
+                  : "Reset password"}
+        </button>
+      </form>
+      {mode === "signin" && (
+        <button
+          onClick={() => setMode("forgot")}
+          className="mt-3 text-sm font-medium text-plum hover:underline"
+        >
+          Forgot password?
+        </button>
+      )}
+      <p className="text-sm text-mauve mt-3">
         {mode === "signin" ? (
           <>
             No account?{" "}
@@ -175,7 +259,7 @@ function AuthScreen() {
               Sign up
             </button>
           </>
-        ) : (
+        ) : mode === "signup" ? (
           <>
             Already have an account?{" "}
             <button
@@ -185,16 +269,22 @@ function AuthScreen() {
               Sign in
             </button>
           </>
+        ) : (
+          <button
+            onClick={() => setMode("signin")}
+            className="font-medium text-plum hover:underline"
+          >
+            Back to sign in
+          </button>
         )}
       </p>
     </div>
   );
 }
 
-export default function App({ loaderData }: Route.ComponentProps) {
+export default function App() {
   return (
-    <ClerkProvider loaderData={loaderData}>
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
         <QueryClientProvider client={queryClient}>
           <main>
             <AuthLoading>
@@ -226,8 +316,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
             </Authenticated>
           </main>
         </QueryClientProvider>
-      </ConvexProviderWithClerk>
-    </ClerkProvider>
+    </ConvexBetterAuthProvider>
   );
 }
 

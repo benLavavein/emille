@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/react-router";
+import { authClient } from "~/lib/auth-client";
 import { OtterIcon } from "~/components/icons/otter";
 
 /** Time-agnostic — also used inside morning & night pools. */
@@ -137,14 +137,14 @@ export function getDailyGreeting(
 }
 
 export function HeroGreeting() {
-  const { user } = useUser();
-  const firstName = user?.firstName || user?.username || "my friend";
+  const { data: session } = authClient.useSession();
+  const firstName = session?.user.name?.split(" ")[0] || "my friend";
 
   return (
     <div className="flex items-center gap-2 mb-12 justify-around">
       <OtterIcon className="w-40 h-40 shrink-0" />
       <h2 className="text-3xl md:text-4xl font-bold text-plum grow text-center">
-        {getDailyGreeting(firstName, user?.id || "")}
+        {getDailyGreeting(firstName, session?.user.id || "")}
       </h2>
     </div>
   );

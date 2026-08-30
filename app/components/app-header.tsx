@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { useUser, useClerk } from "@clerk/react-router";
+import { authClient } from "~/lib/auth-client";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
@@ -46,9 +46,8 @@ function NotiBadge({ count }: { count: number }) {
 function MobileHeader() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const { user } = useUser();
-  const { signOut } = useClerk();
-  const firstName = user?.firstName || user?.username || "User";
+  const { data: session } = authClient.useSession();
+  const firstName = session?.user.name?.split(" ")[0] || "User";
   const { backUrl } = useBackButton();
   const pendingCount = useQuery(api.friends.getPendingInboxCount) ?? 0;
 
@@ -126,7 +125,7 @@ function MobileHeader() {
                 variant="ghost"
                 size="sm"
                 className="text-mauve"
-                onClick={() => signOut()}
+                onClick={() => authClient.signOut()}
               >
                 <LogOut className="size-4" />
                 Sign out
@@ -141,9 +140,8 @@ function MobileHeader() {
 
 function DesktopSidebar() {
   const location = useLocation();
-  const { user } = useUser();
-  const { signOut } = useClerk();
-  const firstName = user?.firstName || user?.username || "User";
+  const { data: session } = authClient.useSession();
+  const firstName = session?.user.name?.split(" ")[0] || "User";
   const pendingCount = useQuery(api.friends.getPendingInboxCount) ?? 0;
 
   return (
@@ -187,7 +185,7 @@ function DesktopSidebar() {
         <div className="flex items-center justify-between">
           <span className="text-lg font-medium text-white/80">{firstName}</span>
           <button
-            onClick={() => signOut()}
+            onClick={() => authClient.signOut()}
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-white/60 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
           >
             <LogOut className="size-3.5" />

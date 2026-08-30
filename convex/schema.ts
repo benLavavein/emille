@@ -2,9 +2,10 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Users table - linked to Clerk authentication
+  // Users table - linked to authentication
   users: defineTable({
     clerkId: v.string(),
+    authId: v.optional(v.string()),
     email: v.string(),
     name: v.optional(v.string()),
     // Optional during the rollout so documents created before this field can
@@ -39,6 +40,7 @@ export default defineSchema({
     ),
   })
     .index("by_clerk_id", ["clerkId"])
+    .index("by_auth_id", ["authId"])
     .index("by_friend_code", ["friendCode"]),
 
   // Friend requests between users

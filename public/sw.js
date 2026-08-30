@@ -24,7 +24,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
-  // Authentication is determined by the server-rendered document and Clerk's
+  // Authentication is determined by the server-rendered document and the
   // cookies. Never cache documents or API responses, otherwise an older
   // signed-out response can be shown when the user returns to the app.
   const cacheableDestinations = new Set([

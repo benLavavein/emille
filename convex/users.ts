@@ -26,6 +26,22 @@ async function generateUniqueFriendCode(ctx: MutationCtx): Promise<string> {
   throw new Error("Could not generate a unique friend code after 10 attempts");
 }
 
+async function findUserByAuthSubject(
+  ctx: QueryCtx | MutationCtx,
+  subject: string,
+) {
+  const betterAuthUser = await ctx.db
+    .query("users")
+    .withIndex("by_auth_id", (q) => q.eq("authId", subject))
+    .unique();
+  if (betterAuthUser) return betterAuthUser;
+
+  return await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", subject))
+    .unique();
+}
+
 // Helper to get the current authenticated user
 export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -33,10 +49,7 @@ export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
     return null;
   }
 
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-    .unique();
+  const user = await findUserByAuthSubject(ctx, identity.subject);
 
   return user;
 }
@@ -48,10 +61,7 @@ export async function requireUser(ctx: QueryCtx | MutationCtx) {
     throw new Error("Not authenticated");
   }
 
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-    .unique();
+  const user = await findUserByAuthSubject(ctx, identity.subject);
 
   if (!user) {
     throw new Error("User not found - please refresh the page");
@@ -69,10 +79,7 @@ export const upsertUser = mutation({
       throw new Error("Not authenticated");
     }
 
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const existingUser = await findUserByAuthSubject(ctx, identity.subject);
 
     if (existingUser) {
       await ctx.db.patch(existingUser._id, {
@@ -88,6 +95,7 @@ export const upsertUser = mutation({
     const friendCode = await generateUniqueFriendCode(ctx);
     const userId = await ctx.db.insert("users", {
       clerkId: identity.subject,
+      authId: identity.subject,
       email: identity.email || "",
       name: identity.name,
       pro: false,
