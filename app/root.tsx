@@ -130,46 +130,49 @@ function AuthScreen() {
     setMessage(undefined);
     setIsSubmitting(true);
 
-    if (mode === "forgot") {
-      const result = await authClient.requestPasswordReset({
-        email,
-        redirectTo: `${window.location.origin}/?resetPassword=1`,
-      });
-      if (result.error) {
-        setError(result.error.message || "Could not request a reset link");
-      } else {
-        setMessage("If that email exists, a reset link is on its way.");
+    try {
+      if (mode === "forgot") {
+        const result = await authClient.requestPasswordReset({
+          email,
+          redirectTo: `${window.location.origin}/?resetPassword=1`,
+        });
+        if (result.error) {
+          setError(result.error.message || "Could not request a reset link");
+        } else {
+          setMessage("If that email exists, a reset link is on its way.");
+        }
+        return;
       }
-      setIsSubmitting(false);
-      return;
-    }
 
-    if (mode === "reset") {
-      const result = await authClient.resetPassword({
-        newPassword: password,
-        token: resetToken || "",
-      });
-      if (result.error) {
-        setError(result.error.message || "Could not reset your password");
-      } else {
-        window.history.replaceState({}, "", "/");
-        setMode("signin");
-        setPassword("");
-        setMessage("Password updated. You can sign in now.");
+      if (mode === "reset") {
+        const result = await authClient.resetPassword({
+          newPassword: password,
+          token: resetToken || "",
+        });
+        if (result.error) {
+          setError(result.error.message || "Could not reset your password");
+        } else {
+          window.history.replaceState({}, "", "/");
+          setMode("signin");
+          setPassword("");
+          setMessage("Password updated. You can sign in now.");
+        }
+        return;
       }
+
+      const result =
+        mode === "signin"
+          ? await authClient.signIn.email({ email, password })
+          : await authClient.signUp.email({ name, email, password });
+
+      if (result.error) {
+        setError(result.error.message || "Authentication failed");
+      }
+    } catch {
+      setError("Could not reach the authentication service. Please try again.");
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    const result =
-      mode === "signin"
-        ? await authClient.signIn.email({ email, password })
-        : await authClient.signUp.email({ name, email, password });
-
-    if (result.error) {
-      setError(result.error.message || "Authentication failed");
-    }
-    setIsSubmitting(false);
   };
 
   return (
