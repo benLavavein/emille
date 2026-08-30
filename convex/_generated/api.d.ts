@@ -12,7 +12,6 @@ import type * as ai_models from "../ai/models.js";
 import type * as ai_recipeCleanup from "../ai/recipeCleanup.js";
 import type * as ai_shoppingListOrder from "../ai/shoppingListOrder.js";
 import type * as auth from "../auth.js";
-import type * as clerkMigration from "../clerkMigration.js";
 import type * as friends from "../friends.js";
 import type * as http from "../http.js";
 import type * as importRecipe from "../importRecipe.js";
@@ -35,7 +34,6 @@ declare const fullApi: ApiFromModules<{
   "ai/recipeCleanup": typeof ai_recipeCleanup;
   "ai/shoppingListOrder": typeof ai_shoppingListOrder;
   auth: typeof auth;
-  clerkMigration: typeof clerkMigration;
   friends: typeof friends;
   http: typeof http;
   importRecipe: typeof importRecipe;

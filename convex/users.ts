@@ -30,15 +30,9 @@ async function findUserByAuthSubject(
   ctx: QueryCtx | MutationCtx,
   subject: string,
 ) {
-  const betterAuthUser = await ctx.db
-    .query("users")
-    .withIndex("by_auth_id", (q) => q.eq("authId", subject))
-    .unique();
-  if (betterAuthUser) return betterAuthUser;
-
   return await ctx.db
     .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", subject))
+    .withIndex("by_auth_id", (q) => q.eq("authId", subject))
     .unique();
 }
 
@@ -94,7 +88,6 @@ export const upsertUser = mutation({
 
     const friendCode = await generateUniqueFriendCode(ctx);
     const userId = await ctx.db.insert("users", {
-      clerkId: identity.subject,
       authId: identity.subject,
       email: identity.email || "",
       name: identity.name,
