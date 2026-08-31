@@ -15,6 +15,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     baseURL: process.env.CONVEX_SITE_URL,
     trustedOrigins: [siteUrl],
     database: authComponent.adapter(ctx),
+    session: {
+      expiresIn: 60 * 60 * 24 * 365,
+    },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
