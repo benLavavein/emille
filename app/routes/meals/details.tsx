@@ -30,7 +30,6 @@ import {
   Sparkles,
   Loader2,
   ShoppingCart,
-  Plus,
   Check,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
@@ -562,7 +561,7 @@ export default function MealDetailsPage() {
                     ) : addedIngredientIndexes.includes(index) ? (
                       <Check className="size-4" />
                     ) : (
-                      <Plus className="size-4" />
+                      <ShoppingCart className="size-4" />
                     )}
                     <span className="hidden sm:inline">
                       {addedIngredientIndexes.includes(index) ? "Added" : "Add"}
