@@ -30,6 +30,8 @@ import {
   Sparkles,
   Loader2,
   ShoppingCart,
+  Plus,
+  Check,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { MEAL_TIMES, MEAL_TIME_ICONS } from "~/lib/constants/meals";
@@ -104,6 +106,8 @@ export default function MealDetailsPage() {
   const [cleanupError, setCleanupError] = useState<string | null>(null);
   const [cleanupNotice, setCleanupNotice] = useState<string | null>(null);
   const [isAddingToShoppingList, setIsAddingToShoppingList] = useState(false);
+  const [addingIngredientIndex, setAddingIngredientIndex] = useState<number | null>(null);
+  const [addedIngredientIndexes, setAddedIngredientIndexes] = useState<number[]>([]);
 
   // React Router reuses this route component when only the meal ID changes.
   // A cleanup preview belongs to one meal only, so discard it on navigation.
@@ -112,6 +116,8 @@ export default function MealDetailsPage() {
     setCleanupError(null);
     setCleanupNotice(null);
     setCleanupStatus(null);
+    setAddingIngredientIndex(null);
+    setAddedIngredientIndexes([]);
   }, [mealId]);
 
   const cookingSession = (cookingSessions ?? []).filter(Boolean).find(
@@ -173,6 +179,18 @@ export default function MealDetailsPage() {
     } catch (error) {
       console.error("Failed to add meal to shopping list:", error);
       setIsAddingToShoppingList(false);
+    }
+  };
+
+  const handleAddIngredient = async (ingredientIndex: number) => {
+    setAddingIngredientIndex(ingredientIndex);
+    try {
+      await addToShoppingList({ mealId, ingredientIndex });
+      setAddedIngredientIndexes((indexes) => [...indexes, ingredientIndex]);
+    } catch (error) {
+      console.error("Failed to add ingredient to shopping list:", error);
+    } finally {
+      setAddingIngredientIndex(null);
     }
   };
 
@@ -523,7 +541,7 @@ export default function MealDetailsPage() {
                       .filter(Boolean)
                       .join(" ") || "—"}
                   </span>
-                  <div className="flex flex-col">
+                  <div className="flex flex-col min-w-0 flex-1">
                     <span className="font-medium text-plum">{ing.name}</span>
                     {ing.notes && (
                       <span className="text-mauve/70 text-xs">
@@ -531,6 +549,25 @@ export default function MealDetailsPage() {
                       </span>
                     )}
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => handleAddIngredient(index)}
+                    disabled={isAddingToShoppingList || addingIngredientIndex !== null}
+                    aria-label={`Add ${ing.name} to shopping list`}
+                  >
+                    {addingIngredientIndex === index ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : addedIngredientIndexes.includes(index) ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <Plus className="size-4" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {addedIngredientIndexes.includes(index) ? "Added" : "Add"}
+                    </span>
+                  </Button>
                 </div>
               ))}
             </div>

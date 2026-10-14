@@ -235,6 +235,7 @@ export const clearAll = mutation({
 export const addFromMeal = mutation({
   args: {
     mealId: v.id("meals"),
+    ingredientIndex: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -242,6 +243,15 @@ export const addFromMeal = mutation({
 
     if (!meal) {
       throw new Error("Meal not found");
+    }
+
+    if (
+      args.ingredientIndex !== undefined &&
+      (!Number.isInteger(args.ingredientIndex) ||
+        args.ingredientIndex < 0 ||
+        args.ingredientIndex >= meal.ingredients.length)
+    ) {
+      throw new Error("Ingredient not found");
     }
 
     if (meal.userId !== user._id) {
@@ -267,7 +277,10 @@ export const addFromMeal = mutation({
       .first();
     const existingItems = shoppingList?.items ?? [];
     const startOrder = existingItems.length;
-    const newItems = meal.ingredients.map((ingredient, index) => ({
+    const ingredients = args.ingredientIndex === undefined
+      ? meal.ingredients
+      : [meal.ingredients[args.ingredientIndex]];
+    const newItems = ingredients.map((ingredient, index) => ({
       id: crypto.randomUUID(),
       name: ingredient.name,
       amount: ingredient.amount,
